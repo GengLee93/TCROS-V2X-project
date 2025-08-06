@@ -1,0 +1,38 @@
+{
+  "SignalStatusMessage": {
+    "timeStamp": 91698,
+    "second": 25368,
+    "sequenceNumber": 24,
+    "status": [
+      {
+        "sequenceNumber": 0,
+        "id": {
+          "region": 1,
+          "id": 3009856570
+        },
+        "sigStatus": [
+          {
+            "requester": {
+              "id": {
+                "entityID": 10
+              },
+              "request": 0,
+              "sequenceNumber": 91,
+              "role": 0
+            },
+            "inboundOn": {
+              "lane": 2
+            },
+            "outboundOn": {
+              "lane": 1
+            },
+            "minute": 91698,
+            "second": 24368,
+            "duration": 0,
+            "status": 4
+          }
+        ]
+      }
+    ]
+  }
+}

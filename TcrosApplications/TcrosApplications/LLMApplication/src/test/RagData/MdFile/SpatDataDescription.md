@@ -1,0 +1,36 @@
+## **1. Intersection Information Set (intersections)**
+- **intersections**: Intersection signal message set, containing all timing information for intersection signals.
+  - **id**: Intersection ID message set
+    - **region**: Intersection region ID, using postal codes in this standard.
+    - **id**: Sequential intersection ID within the region.
+  - **revision**: Message sequence number, used to confirm the latest message.
+  - **status**: Signal operation status (BIT STRING, SIZE 16)
+    - `manualControlIsEnabled (0)`: Manual control
+    - `stopTimeIsActivated (1)`: Operation time lock
+    - `failureFlash (2)`: Fault flashing
+    - `preemptIsActive (3)`: Absolute priority
+    - `signalPriorityIsActive (4)`: Conditional priority
+    - `fixedTimeOperation (5)`: Fixed-time control
+    - `Bit 6-7`: Reserved
+    - `failureMode (8)`: Abnormal
+    - `off (9)`: Shut down
+    - `Bit 10-15`: Reserved
+  - **moy**: Accumulated minutes within the year, used with `timestamp` to define the reference time for information release.
+  - **timeStamp**: Accumulated value of milliseconds within the current minute.
+  - **states**: Contains all signal phase information
+    - **signalGroup**: Signal light group ID, used for indexing with V2X MAP.
+    - **state-time-speed**: Signal event message set, containing all signal event information.
+      - **eventState**: Signal light state
+        - `unavailable (0)`: Fault
+        - `dark (1)`: Not activated
+        - `stop-Then-Proceed (2)`: Red light, stop before proceeding
+        - `stop-And-Remain (3)`: (Pedestrian) Red light, stop and wait
+        - `pre-Movement (4)`: Green light pre-announcement
+        - `permissive-Movement-Allowed (5)`: (Pedestrian) Permissive green light (circular signal)
+        - `protected-Movement-Allowed (6)`: (Pedestrian) Protected green light (arrow signal)
+        - `permissive-clearance (7)`: Permissive yellow light (pedestrian flashing green)
+        - `protected-clearance (8)`: Protected yellow light
+        - `caution-Conflicting-Traffic (9)`: Flashing signal
+      - **timing**: Contains all signal timing information
+        - **startTime**: Start time of the signal state.
+        - **minEndTime**: Earliest end time of the signal state. If no dynamic signal control is present, this is the signal end time.

@@ -1,0 +1,56 @@
+{
+  "timeStamp": 143216,
+  "second": 12488,
+  "sequenceNumber": 1,
+  "status": [
+    {
+      "sequenceNumber": 1,
+      "id": {
+        "region": 1,
+        "id": 2900290158
+      },
+      "sigStatus": [
+        {
+          "requester": {
+            "id": {
+              "entityID": 0
+            },
+            "request": 0,
+            "sequenceNumber": 39,
+            "role": 0
+          },
+          "inboundOn": {
+            "lane": 2
+          },
+          "outboundOn": {
+            "lane": 3
+          },
+          "minute": 143216,
+          "second": 11488,
+          "duration": 0,
+          "status": 4
+        },
+        {
+          "requester": {
+            "id": {
+              "entityID": 0
+            },
+            "request": 1,
+            "sequenceNumber": 92,
+            "role": 0
+          },
+          "inboundOn": {
+            "lane": 0
+          },
+          "outboundOn": {
+            "lane": 5
+          },
+          "minute": 143216,
+          "second": 11488,
+          "duration": 0,
+          "status": 4
+        }
+      ]
+    }
+  ]
+}

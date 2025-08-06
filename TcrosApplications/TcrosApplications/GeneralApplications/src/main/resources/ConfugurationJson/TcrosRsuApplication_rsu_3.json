@@ -1,0 +1,12 @@
+{
+  "label": "A06",
+  "priorityStartTime" : 0,
+  "priorityEndTime" : 999,
+  "trafficLightInfoList": [
+    {
+      "id" : "tl_37",
+      "tlGroup": "2900290137",
+      "nodeId": "2900290137"
+    }
+  ]
+}

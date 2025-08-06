@@ -1,0 +1,104 @@
+{
+  "intersections": [
+    {
+      "id": {
+        "region": 1,
+        "id": 2900290155
+      },
+      "revision": 1,
+      "status": "0000000000100000",
+      "moy": 9602,
+      "timeStamp": 46227,
+      "states": [
+        {
+          "signalGroup": 0,
+          "state-time-speed": [
+            {
+              "eventState": 6,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            },
+            {
+              "eventState": 6,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            }
+          ]
+        },
+        {
+          "signalGroup": 1,
+          "state-time-speed": [
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            },
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": {
+        "region": 1,
+        "id": 2900290157
+      },
+      "revision": 2,
+      "status": "0000000000100000",
+      "moy": 9602,
+      "timeStamp": 46227,
+      "states": [
+        {
+          "signalGroup": 0,
+          "state-time-speed": [
+            {
+              "eventState": 6,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            },
+            {
+              "eventState": 6,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            }
+          ]
+        },
+        {
+          "signalGroup": 1,
+          "state-time-speed": [
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            },
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 21242,
+                "minEndTime": 21662
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

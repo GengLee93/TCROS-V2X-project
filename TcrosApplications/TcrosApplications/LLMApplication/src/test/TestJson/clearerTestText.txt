@@ -1,0 +1,38 @@
+Here is the modified Signal Status Message with all requests rejected by entity 0 and granted by entity 1:
+
+```json
+{
+  "SignalStatusMessage": {
+    "timeStamp": 152273,
+    "second": 6811,
+    "sequenceNumber": 0,
+    "status": [ {
+      "sequenceNumber": 1,
+      "id": {
+        "region": 1,
+        "id": 2900290158
+      },
+      "sigStatus": [ {
+        "requester": {
+          "id": {
+            "entityID": 1
+          },
+          "request": 0,
+          "sequenceNumber": 38,
+          "role": 0
+        },
+        "inboundOn": {
+          "lane": 2
+        },
+        "outboundOn": {
+          "lane": 3
+        },
+        "minute": 152273,
+        "second": 5811,
+        "duration": 0,
+        "status": 4 // Changed from 1 to 4 (granted)
+      } ]
+    } ]
+  }
+}
+```

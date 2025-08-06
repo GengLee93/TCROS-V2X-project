@@ -1,0 +1,20 @@
+{
+  "modelName": "gemma3:27b-it-qat",
+  "url": "http://140.124.184.213:11434/",
+  "jsonSchema": false,
+  "targetIds": [0],
+  "modifyLimit": 10,
+  "temperature": 0.5,
+  "ragFilesPath": "src\\test\\RagData\\CompositeData",
+  "basicPrompt": "You are an expert specialized in v2x communication protocols.\nThe protocols packet will be in JSON format.\nPlease strictly abide by the following rules:\n1. Make sure to only change the necessary fields to achieve give instructions.If the field value does not need to be changed, keep the original value.\n2. When the field value does not meet the constraints, please correct it according to the error content.\n3. Reply with completed and standard JSON format without any omissions or comments.",
+  "customPromptTemplate": {
+    "template": "<scenarioPrompt>\nOriginal Signal Status Message:\n '''json\n<originalJson>\n'''\nPrevious Error Type:<errorType>\nPrevious Error Content :\n<errorContent>",
+    "replaceMap": {
+      "scenarioPrompt": "If you want to perform a black hole attack on Entity 0 in Original Signal Status Message, how would you modify it? ",
+      "originalJson": null,
+      "errorType": null,
+      "errorContent": null
+    }
+  },
+  "queryTemplate": "Please refer below example content:\n{{contents}}\n {{userMessage}}"
+}

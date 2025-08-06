@@ -1,0 +1,36 @@
+{
+  "timeStamp": 269975,
+  "second": 21576,
+  "sequenceNumber": 0,
+  "status": [
+    {
+      "sequenceNumber": 0,
+      "id": {
+        "region": 251,
+        "id": 1
+      },
+      "sigStatus": [
+        {
+          "requester": {
+            "id": {
+              "entityID": "5220"
+            },
+            "request": 0,
+            "sequenceNumber": 0,
+            "role": 14
+          },
+          "inboundOn": {
+            "lane": 49
+          },
+          "outboundOn": {
+            "lane": 66
+          },
+          "minute": 269978,
+          "second": 23245,
+          "duration": 18264,
+          "status": 2
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+- **timeStamp**: The accumulated value of minutes within a year.
+- **second**: The total accumulated value of 0.001-second units within the current minute.
+- **sequenceNumber**: Increments by 1 when any message content, except `timeStamp` and `second`, changes. Resets to 0 when the request ends.
+- **status**: A signal status message set that can describe the signal status of up to 32 intersections.
+    - **sequenceNumber**: Increments by 1 when any object (intersection-related information) in the `status` matrix changes. Resets to 0 when the request ends.
+    - **id**: Intersection ID message set, providing location information of the intersection and linking with other messages through this set.
+        - **region**: Corresponds to the `MapData` intersection's associated area code, which can be user-defined, currently using postal codes.
+        - **id**: Corresponds to the `MapData` intersection ID, which can be user-defined.
+
+    - **sigStatus**: A signal status message set that can report the signal status for up to 32 requesters at a specific intersection.
+        - **requester**: Priority requester information, including details such as `id` and `request`.
+            - **id**: Requesting vehicle ID, include field `entityID`.
+                - **entityID**: entityID of the vehicle making the request.
+            - **request**: Priority request number.
+            - **sequenceNumber**: Message sequence number.
+            - **role**: Enumeration. Requester role. Default is 0.
+        - **inboundOn**: Priority vehicle inbound information.
+            - **lane**: Inbound lane ID for the priority vehicle, corresponding to the `MapData` intersection's associated lane ID, derived from `Signal Request Message inBoundLane lane`.
+        - **outboundOn**: Priority vehicle outbound information.
+            - **lane**: Outbound lane ID for the priority vehicle, corresponding to the `MapData` intersection's associated lane ID, derived from `Signal Request Message outBoundLane lane`.
+        - **minute**: Estimated Time of Arrival (ETA) in minutes, derived from `Signal Request Message minute`.
+        - **second**: Estimated Time of Arrival (ETA) in seconds, derived from `Signal Request Message second`.
+        - **duration**: Estimated arrival time range, indicating possible variations in arrival time, derived from `Signal Request Message duration`.
+        - **status**: Enumeration. (0 to 7), Request status report.
+            - `unknown` - Unknown status (0)
+            - `requested` - Request received (1)
+            - `processing` - Queue processing (2)
+            - `watchOtherTraffic` - Special approval status (3)
+            - `granted` - Request granted (4)
+            - `rejected` - Request rejected (5)
+            - `maxPresence` - Processing time exceeded (6)
+            - `reserviceLocked` - Service locked (7)  

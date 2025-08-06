@@ -1,0 +1,39 @@
+{
+  "rsuConfiguration": {
+    "label": "B08",
+    "priorityStartTime" : 0,
+    "priorityEndTime" : 999,
+    "trafficLightInfoList": [
+      {
+        "id": "tl_65",
+        "tlGroup": "3009856570",
+        "nodeId": "3009856570"
+      },
+      {
+        "id": "tl_40",
+        "tlGroup": "2900290158",
+        "nodeId": "2900290158"
+      }
+    ]
+  },
+  "llmConfiguration": {
+    "modelName": "llama3.2",
+    "url": "http://140.124.184.213:11434/",
+    "jsonSchema": false,
+    "targetIds" : [0],
+    "modifyLimit" : 10,
+    "temperature": 0.5,
+    "ragFilesPath" : "F:\\Project\\Thesis\\Thesis\\Eclispe MOSAIC Application\\TcrosApplications\\TcrosApplications\\LLMApplication\\src\\test\\RagData\\CompositeData",
+    "basicPrompt": "You are an expert specialized in v2x communication protocols. You will receive multiple protocols packets, your task is modify them to achieve goal.\\nThe protocols packet will be in JSON format.\\nWhen you modify packet please strictly abide by the following rules:\\n1. Make sure to only change the necessary fields to achieve give instructions.\\n2. When the error occurs, correct it according to the previous error content.\\n3. Reply with completed and standard JSON format without any omissions or comments.",
+    "customPromptTemplate": {
+      "template" : "<scenarioPrompt>\nOriginal Signal Status Message:\n ```json\n<originalJson>\n```\nPrevious Error Type:<errorType>\nPrevious Error Content :\n<errorContent>",
+      "replaceMap": {
+        "scenarioPrompt": "If you want to perform a black hole attack on Entity 0 in Original Signal Status Message, how would you modify it? ",
+        "originalJson" : null,
+        "errorType": null,
+        "errorContent" : null
+      }
+    },
+    "queryTemplate": "Please refer below example content:\n{{contents}}\n{{userMessage}}"
+  }
+}

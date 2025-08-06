@@ -1,0 +1,120 @@
+{
+  "intersections": [
+    {
+      "id": {
+        "region": 23555,
+        "id": 9
+      },
+      "revision": 1,
+      "status": "0000010000000000",
+      "moy": 6961,
+      "timeStamp": 700,
+      "states": [
+        {
+          "signalGroup": 1,
+          "stateTimeSpeed": [
+            {
+              "eventState": 5,
+              "timing": {
+                "startTime": 700,
+                "minEndTime": 950
+              }
+            },
+            {
+              "eventState": 7,
+              "timing": {
+                "startTime": 950,
+                "minEndTime": 980
+              }
+            },
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 980,
+                "minEndTime": 1300
+              }
+            }
+          ]
+        },
+        {
+          "signalGroup": 2,
+          "stateTimeSpeed": [
+            {
+              "eventState": 5,
+              "timing": {
+                "startTime": 770,
+                "minEndTime": 950
+              }
+            },
+            {
+              "eventState": 7,
+              "timing": {
+                "startTime": 950,
+                "minEndTime": 980
+              }
+            },
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 380,
+                "minEndTime": 770
+              }
+            }
+          ]
+        },
+        {
+          "signalGroup": 3,
+          "stateTimeSpeed": [
+            {
+              "eventState": 5,
+              "timing": {
+                "startTime": 1100,
+                "minEndTime": 1250
+              }
+            },
+            {
+              "eventState": 7,
+              "timing": {
+                "startTime": 1250,
+                "minEndTime": 1280
+              }
+            },
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 680,
+                "minEndTime": 1100
+              }
+            }
+          ]
+        },
+        {
+          "signalGroup": 4,
+          "stateTimeSpeed": [
+            {
+              "eventState": 5,
+              "timing": {
+                "startTime": 1100,
+                "minEndTime": 1250
+              }
+            },
+            {
+              "eventState": 7,
+              "timing": {
+                "startTime": 1250,
+                "minEndTime": 1280
+              }
+            },
+            {
+              "eventState": 3,
+              "timing": {
+                "startTime": 680,
+                "minEndTime": 1100
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

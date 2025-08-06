@@ -1,0 +1,45 @@
+{
+  "timeStamp": 269975,
+  "second": 56235,
+  "sequenceNumber": 0,
+  "requests": [
+    {
+      "request": {
+        "id": {
+          "region": 251,
+          "id": 1
+        },
+        "requestID": 1,
+        "requestType": 1,
+        "inBoundLane": {
+          "lane": 49
+        },
+        "outBoundLane": {
+          "lane": 66
+        }
+      },
+      "minute": 269978,
+      "second": 23245,
+      "duration": 18264
+    }
+  ],
+  "requestor": {
+    "id": {
+      "entityID": "5220"
+    },
+    "type": {
+      "role": 14,
+      "hpmsType": 5
+    },
+    "position": {
+      "position": {
+        "lat": 251947791,
+        "lon": 1214387273,
+        "elevation": 5976
+      }
+    },
+    "transitStatus": 11111111,
+    "transitOccupancy": 0,
+    "transitSchedule": -122
+  }
+}
