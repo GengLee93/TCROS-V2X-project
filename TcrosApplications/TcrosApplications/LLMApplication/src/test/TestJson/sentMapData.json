@@ -1,0 +1,114 @@
+{
+  "MapData" : {
+    "msgIssueRevision" : 0,
+    "intersections" : [ {
+      "id" : {
+        "region" : 1,
+        "id" : 2900290155
+      },
+      "revision" : 1,
+      "refPoint" : {
+        "lat" : 251931514,
+        "long" : 1214384640,
+        "elevation" : 0
+      },
+      "laneSet" : [ {
+        "laneID" : 0,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 1,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 2,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 3,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 4,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 5,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 6,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      } ]
+    }, {
+      "id" : {
+        "region" : 1,
+        "id" : 2900290157
+      },
+      "revision" : 2,
+      "refPoint" : {
+        "lat" : 251931514,
+        "long" : 1214384640,
+        "elevation" : 0
+      },
+      "laneSet" : [ {
+        "laneID" : 0,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 1,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 2,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 3,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 4,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 5,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      }, {
+        "laneID" : 6,
+        "laneAttributes" : null,
+        "maneuvers" : null,
+        "nodeList" : null,
+        "connectsTo" : null
+      } ]
+    } ]
+  }
+}

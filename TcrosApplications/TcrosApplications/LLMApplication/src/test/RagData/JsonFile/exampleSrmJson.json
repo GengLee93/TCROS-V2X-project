@@ -1,0 +1,67 @@
+{
+  "SignalRequestMessage": {
+    "requestorId": 0,
+    "timeStamp": 9603,
+    "second": 54227,
+    "sequenceNumber": 0,
+    "requests": [
+      {
+        "request": {
+          "id": {
+            "region": 1,
+            "id": 2900290157
+          },
+          "requestID": 0,
+          "requestType": 2,
+          "inBoundLane": {
+            "lane": 3
+          },
+          "outBoundLane": {
+            "lane": 6
+          }
+        },
+        "minute": 9604,
+        "second": 4533,
+        "duration": 0
+      },
+      {
+        "request": {
+          "id": {
+            "region": 1,
+            "id": 2900290155
+          },
+          "requestID": 1,
+          "requestType": 3,
+          "inBoundLane": {
+            "lane": 2
+          },
+          "outBoundLane": {
+            "lane": 1
+          }
+        },
+        "minute": 9603,
+        "second": 51227,
+        "duration": 0
+      }
+    ],
+    "requestor": {
+      "id": {
+        "entityID": 0
+      },
+      "type": {
+        "role": 0,
+        "hpmsType": 4
+      },
+      "position": {
+        "position": {
+          "lat": 251931733,
+          "long": 1214384004,
+          "elevation": 0
+        }
+      },
+      "transitStatus": "11111111",
+      "transitOccupancy": 0,
+      "transitSchedule": -122
+    }
+  }
+}

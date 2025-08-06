@@ -1,0 +1,66 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>islab.ntut.edu</groupId>
+    <artifactId>TcrosApplications</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <maven.compiler.source>20</maven.compiler.source>
+        <maven.compiler.target>20</maven.compiler.target>
+    </properties>
+
+    <modules>
+        <module>GeneralApplications</module>
+        <module>LLMApplication</module>
+        <module>TcrosProtocol</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <!-- 插件來複製 JAR 到指定的資料夾 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.1.2</version>
+                <executions>
+                    <execution>
+                        <id>copy-jars</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <!-- 指定要複製的 JAR 檔案 -->
+                            <outputDirectory>${project.build.directory}/outputJars</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>islab.ntut.edu</groupId>
+                                    <artifactId>GeneralApplications</artifactId>
+                                    <version>0.0.1</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>islab.ntut.edu</groupId>
+                                    <artifactId>LLMApplication</artifactId>
+                                    <version>0.0.1</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>islab.ntut.edu</groupId>
+                                    <artifactId>TcrosProtocol</artifactId>
+                                    <version>0.0.1</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+
+</project>

@@ -1,0 +1,58 @@
+{
+  "timeStamp" : 139758,
+  "second" : 31093,
+  "sequenceNumber" : 40,
+  "status" : [ {
+    "sequenceNumber" : 0,
+    "id" : {
+      "region" : 1,
+      "id" : 3009856570
+    },
+    "sigStatus" : [ {
+      "requester" : {
+        "id" : {
+          "entityID" : 25
+        },
+        "request" : 0,
+        "sequenceNumber" : 128,
+        "role" : 0
+      },
+      "inboundOn" : {
+        "lane" : 4
+      },
+      "outboundOn" : {
+        "lane" : 1
+      },
+      "minute" : 139758,
+      "second" : 30093,
+      "duration" : 0,
+      "status" : 4
+    } ]
+  }, {
+    "sequenceNumber" : 1,
+    "id" : {
+      "region" : 1,
+      "id" : 2900290158
+    },
+    "sigStatus" : [ {
+      "requester" : {
+        "id" : {
+          "entityID" : 25
+        },
+        "request" : 1,
+        "sequenceNumber" : 128,
+        "role" : 0
+      },
+      "inboundOn" : {
+        "lane" : 0
+      },
+      "outboundOn" : {
+        "lane" : 5
+      },
+      "minute" : 139758,
+      "second" : 30093,
+      "duration" : 0,
+      "status" : 4
+    } ]
+  } ]
+}

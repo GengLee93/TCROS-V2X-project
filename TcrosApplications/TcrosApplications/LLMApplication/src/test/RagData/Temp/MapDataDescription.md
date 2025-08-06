@@ -1,0 +1,76 @@
+- **msgIssueRevision**: Message sequence number, used to confirm message update status.
+- **id**: Intersection ID message set, providing intersection location information and linking with other messages through this set.
+    - **region**: The area code of the intersection. This standard uses postal codes.
+    - **id**: Sequential intersection ID within the region.
+- **revision**: Message sequence number, used to confirm the latest message.
+- **refPoint**: Intersection reference point, including latitude, longitude, and elevation information.
+    - **lat**: Latitude, represented in 10 micro-degrees. `900000001` indicates no latitude information.
+    - **lon**: Longitude, represented in 10 micro-degrees. `1800000001` indicates no longitude information.
+    - **elevation**: Elevation, represented in 10 cm units.
+
+- **laneSet**: Lane collection, including all lane information.
+    - **laneID**: Lane identifier, uniquely identifying a lane within the intersection.
+    - **laneAttributes**: Lane attributes, including basic information about lane types.
+        - **directionalUse**: Lane usage direction.
+            - Entering the intersection (0)
+            - Exiting the intersection (1)
+            - No direction (e.g., central island)
+            - Multi-directional (both 2 BITs set)
+        - **sharedWith**: Shared lane usage.
+            - Non-motorized vehicles (2)
+            - Motorized vehicles (3)
+            - Buses (4)
+            - Taxis (5)
+            - Pedestrians (6)
+            - Bicycles (7)
+            - Tracked vehicles (8)
+        - **laneType**: Lane type.
+            - **vehicle (BIT STRING, SIZE 8)**
+                - Lane activated at specific times based on SPaT (0)
+                - Elevated lane (1)
+                - High-occupancy vehicle lane (2)
+                - Bus-only lane (3)
+                - Taxi-only lane (4)
+                - Government-use-only lane (5)
+                - Special vehicle permit lane (7)
+            - **crosswalk (BIT STRING, SIZE 16)**
+                - Lane activated at specific times based on SPaT (0)
+                - Pedestrian crosswalk allowing bicycles (1)
+                - Elevated pedestrian crosswalk (2)
+                - Default pedestrian phase (3)
+                - Pedestrian push button (5)
+                - Audible pedestrian signal (6)
+            - **bikeLane (BIT STRING, SIZE 16)**
+                - Lane activated at specific times based on SPaT (0)
+                - Shared with pedestrians (1)
+                - Elevated bike lane (2)
+                - Default timing (3)
+                - Physically separated bike lane (5)
+            - **sidewalk (BIT STRING, SIZE 16)**
+                - Lane activated at specific times based on SPaT (0)
+                - Shared sidewalk with bicycles (1)
+                - Sidewalk (2)
+                - Bicycles must be walked (3)
+            - **trackedVehicle (BIT STRING, SIZE 16)**
+                - Lane activated at specific times based on SPaT (0)
+                - Commuter rail (1)
+                - Light rail (2)
+                - Heavy rail transit (3)
+                - Other track types (4)
+
+    - **maneuvers**: Driving maneuvers allowed in this lane.
+        - Straight (0)
+        - Left turn (1)
+        - Right turn (2)
+        - U-turn (3)
+        - Left turn on red (4)
+        - Right turn on red (5)
+        - Reserved values (11)
+    - **nodeList**: Node information set.
+        - Nodes are used to describe the lane shape.
+        - Must be placed at the lane center line, with a minimum of 2 and a maximum of 63 nodes.
+        - Node coordinates are represented using latitude and longitude.
+    - **connectsTo**: Connecting lane information set.
+        - **connectingLane**: Connecting lane information set, including all connectable lane IDs.
+        - **remoteIntersection**: Remote intersection information set, applicable for special situations like grade-separated intersections.
+        - **signalGroup**: Signal light movement ID, used for indexing and associating with SPaT.

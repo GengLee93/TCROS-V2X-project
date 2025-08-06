@@ -1,0 +1,87 @@
+{
+  "SignalStatusMessage": {
+    "timeStamp": 9602,
+    "second": 41227,
+    "sequenceNumber": 0,
+    "status": [
+      {
+        "sequenceNumber": 0,
+        "id": {
+          "region": 1,
+          "id": 2900290155
+        },
+        "sigStatus": [
+          {
+            "requester": {
+              "id": {
+                "entityID": 2
+              },
+              "request": 1,
+              "sequenceNumber": 0,
+              "role": 0
+            },
+            "inboundOn": {
+              "lane": 2
+            },
+            "outboundOn": {
+              "lane": 1
+            },
+            "minute": 9603,
+            "second": 43227,
+            "duration": 0,
+            "status": 2
+          },
+          {
+            "requester": {
+              "id": {
+                "entityID": 0
+              },
+              "request": 2,
+              "sequenceNumber": 0,
+              "role": 0
+            },
+            "inboundOn": {
+              "lane": 2
+            },
+            "outboundOn": {
+              "lane": 1
+            },
+            "minute": 9603,
+            "second": 43227,
+            "duration": 0,
+            "status": 2
+          }
+        ]
+      },
+      {
+        "sequenceNumber": 1,
+        "id": {
+          "region": 1,
+          "id": 2900290157
+        },
+        "sigStatus": [
+          {
+            "requester": {
+              "id": {
+                "entityID": 2
+              },
+              "request": 0,
+              "sequenceNumber": 0,
+              "role": 0
+            },
+            "inboundOn": {
+              "lane": 3
+            },
+            "outboundOn": {
+              "lane": 1
+            },
+            "minute": 9603,
+            "second": 43227,
+            "duration": 0,
+            "status": 2
+          }
+        ]
+      }
+    ]
+  }
+}
