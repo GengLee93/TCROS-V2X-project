@@ -132,18 +132,26 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
             getOs().getAdHocModule().sendV2xMessage(tlMessage);
             getLog().infoSimTime(this, "RsuTrafficLightMessage has sent.");
             getLog().infoSimTime(this, "Request Node:");
+
+            // 記錄所有交通燈控制信息其對應的交通燈節點 ID 到 log
             for(TrafficLightControlInfo info : tlMessage.getTrafficLightControlInfoList()){
                 getLog().info(info.getNodeId());
             }
         }
     }
 
+    /**
+     * 建立用於地理區域廣播的訊息路由配置。
+     * 此方法設定了基於地理位置的廣播通訊機制，用於在特定區域內傳播車聯網訊息。
+     *
+     * @return MessageRouting 返回配置好的訊息路由物件，包含通道和地理區域設定
+     */
     private MessageRouting createGeoBroadCastMessageRouting(){
         return  getOperatingSystem()
                 .getAdHocModule()
                 .createMessageRouting()
-                .viaChannel(AdHocChannel.CCH)
-                .geoBroadCast(geoBoardCastArea);
+                .viaChannel(AdHocChannel.CCH)       // 設定使用控制通道（CCH, Control Channel）
+                .geoBroadCast(geoBoardCastArea);    // 設定地理廣播區域
     }
 
     private TcrosProtocolV2xMessage<SPaTData> creatSPaTData(MessageRouting routing){
@@ -162,6 +170,14 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         return mapDataMessage;
     }
 
+    /**
+     * 取得模擬系統當前的時間戳（以毫秒表示）。
+     * 此方法將模擬啟動時的系統時間（實際時間基準點）
+     * 加上模擬器內部已累積的模擬時間（可調整速率），
+     * 得出目前模擬時間軸對應的「虛擬系統時間」。
+     *
+     * @return 模擬當下對應的系統時間戳（毫秒）
+     */
     private long getRealMilliTimeInSimOffset(){
         return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
     }

@@ -13,6 +13,7 @@ import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.MapDataBuilder;
 import CommonUtil.TcrosBuilder.SpatBuilder;
 import CommonUtil.TcrosBuilder.SsmBuilder;
+import CommonUtil.TcrosBuilder.RsaBuilder;
 import CommonUtil.TcrosValidator.TcrosValidator;
 import Configurations.RsuConfiguration;
 import Configurations.TrafficLightInfo;
@@ -21,10 +22,7 @@ import Tcros2MosaicProtocol.TrafficLightMessage.RsuTrafficLightMessage;
 import Tcros2MosaicProtocol.TrafficLightMessage.TrafficLightControlInfo;
 import Tcros2MosaicProtocol.TrafficLightMessage.TrafficLightStatusMessage;
 import Tcros2MosaicProtocol.TrafficLightMessage.TrafficLightsStateInfo;
-import TcrosProtocols.SPaTData;
-import TcrosProtocols.SignalRequestMessage;
-import TcrosProtocols.SignalStatusMessage;
-import TcrosProtocols.V2XMapData;
+import TcrosProtocols.*;
 import Util.PositionUtil;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
 import org.eclipse.mosaic.lib.geo.MutableGeoPoint;
@@ -37,6 +35,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
+/**
+ * RSU 控制核心
+ * 主要負責：
+ * 1. 交通號誌控制
+ * 2. 車輛請求管理
+ * 3. V2X 消息處理
+ */
 public class RsuControlCore {
     private final GeoPoint geoPoint;
     private final RsuConfiguration rsuConfiguration;
@@ -44,20 +49,39 @@ public class RsuControlCore {
     private final Long priorityEndTime;
     private final Path logPath;
     private Long simTime;
+
+    // 時間佇列管理器，負責管理多個不同狀態的車輛請求佇列
     private TimeQueueManager<SignalRequestMessage> timeQueueManager;
+    private TimeQueueManager<RoadSideAlert> rsaTimeQueueManager;
+
+    // 交通號誌狀態資訊對應表，key 為節點 ID，value 為號誌狀態
     private Map<String, TrafficLightsStateInfo> trafficLightsStateInfoMap;
+
+    // ==================== 訊息記錄 ====================
     private final List<V2XMapData> mapDataSentRecords;
     private final List<SPaTData> spatSentRecords;
     private final List<SignalStatusMessage> ssmSentRecords;
+    private final List<RoadSideAlert> rsaSentRecords;
+
+    // ==================== 系統常數 ====================
     private static final int IN_QUEUE_TIME_LIMIT = 3;
     private static final int WAIT_QUEUE_TIME_LIMIT = 3;
     private static final int REJECT_QUEUE_TIME_LIMIT = 10;
     private static final int TIMER_INTERVAL = 1;
-    private static final String GRANTED_QUEUE = "grantedQueue";
-    private static final String WAIT_QUEUE = "waitQueue";
-    private static final String REQUESTED_QUEUE = "requestedQueue";
-    private static final String PASSED_QUEUE = "passedQueue";
-    private static final String REJECT_QUEUE = "rejectQueue";
+
+    // ==================== 佇列名稱常數 ====================
+    private static final String GRANTED_QUEUE = "grantedQueue";     // 已授權狀態，表示請求已被接受並獲得優先權
+    private static final String WAIT_QUEUE = "waitQueue";           // 等待狀態，已收到請求等待處理
+    private static final String REQUESTED_QUEUE = "requestedQueue"; // 初始請求狀態，車輛首次發送優先號誌請求
+    private static final String PASSED_QUEUE = "passedQueue";       // 已通過狀態，車輛已通過路口
+    private static final String REJECT_QUEUE = "rejectQueue";       // 拒絕狀態，請求被拒絕或超時
+    private static final String RSA_QUEUE = "rsaQueue";             // 路側事件警告(Road Side Alert) 事件池
+
+    /**
+     * @param point RSU 地理位置
+     * @param configuration RSU 設定資訊
+     * @param
+     */
     public RsuControlCore( GeoPoint point, RsuConfiguration configuration,Path lPath){
         geoPoint = point;
         simTime = 0L;
@@ -68,10 +92,15 @@ public class RsuControlCore {
         mapDataSentRecords = new ArrayList<>();
         spatSentRecords = new ArrayList<>();
         ssmSentRecords = new ArrayList<>();
+        rsaSentRecords = new ArrayList<>();
         initTimerManager();
         initTrafficLightConfiguration();
     }
 
+    /**
+     * 初始化時間佇列管理器
+     * 註冊所有必要的佇列:
+     */
     private void initTimerManager() {
         timeQueueManager = new TimeQueueManager<>();
         timeQueueManager.registerTimeQueue(GRANTED_QUEUE);
@@ -79,8 +108,16 @@ public class RsuControlCore {
         timeQueueManager.registerTimeQueue(PASSED_QUEUE);
         timeQueueManager.registerTimeQueue(WAIT_QUEUE);
         timeQueueManager.registerTimeQueue(REJECT_QUEUE);
+
+        // RSA Queue 用來處理多筆緊急事件
+        rsaTimeQueueManager = new TimeQueueManager<>();
+        rsaTimeQueueManager.registerTimeQueue(RSA_QUEUE);
     }
 
+    /**
+     * 初始化交通號誌配置
+     * 為每個交通號誌節點創建狀態 Mapping
+     */
     private void initTrafficLightConfiguration(){
         trafficLightsStateInfoMap = new HashMap<>();
         for (TrafficLightInfo trafficLightInfo : rsuConfiguration.trafficLightInfoList){
@@ -92,14 +129,28 @@ public class RsuControlCore {
         if(receivedMessage instanceof TcrosProtocolV2xMessage<?> message &&
             Objects.equals(message.getProtocolClassName(), SignalRequestMessage.class.getName())){
             handleSRM((TcrosProtocolV2xMessage<SignalRequestMessage>) message);
-        }else if(receivedMessage instanceof TrafficLightStatusMessage message){
+        }
+        else if(receivedMessage instanceof TcrosProtocolV2xMessage<?> message &&
+                Objects.equals(message.getProtocolClassName(), EmergencyVehicleAlert.class.getName())) {
+            handleEVA((TcrosProtocolV2xMessage<EmergencyVehicleAlert>) message);
+        }
+        else if(receivedMessage instanceof TrafficLightStatusMessage message){
             handleTrafficLightStatusMessage(message);
         }
     }
 
+    /**
+     * 處理優先號誌請求訊息(SRM)
+     * 根據請求類型將車輛分配到相應佇列
+     *
+     * @param message 收到的SRM消息
+     */
     private void handleSRM(TcrosProtocolV2xMessage<SignalRequestMessage> message){
+        // 獲取車輛ID和SRM消息
         String vehicleId = message.getSenderId();
         SignalRequestMessage srm = message.getTcrosProtocol();
+
+        // 判斷請求類型
         SrmAssertedType assertedType = assertRequestTypeBySrm(srm);
         if(assertedType != null) {
             if (assertedType == SrmAssertedType.PASSED) {
@@ -114,6 +165,16 @@ public class RsuControlCore {
         }
     }
 
+    /**
+     * 將車輛狀態設置為「已通過」
+     * 狀態轉換規則：
+     * - 允許從：授權/等待/請求佇列 轉入
+     * - 不允許：車輛在 REJECT_QUEUE 中
+     * - 互斥條件：一旦進入此狀態，會自動從其他狀態移除
+     *
+     * @param vehicleId 車輛ID
+     * @param srm 信號請求消息
+     */
     public void addToPassedQueue(String vehicleId,SignalRequestMessage srm){
         timeQueueManager.addTimeQueueEntryCondition(
             PASSED_QUEUE,
@@ -124,6 +185,16 @@ public class RsuControlCore {
         );
     }
 
+    /**
+     * 將車輛狀態設置為「初始請求」
+     * 條件：
+     * - 僅允許：新進入系統的車輛
+     * - 不允許：已在任何其他佇列中的車輛
+     * - 互斥條件：車輛必須不在任何其他狀態中
+     *
+     * @param vehicleId 車輛ID
+     * @param srm 信號請求消息
+     */
     public void addToRequestedQueue(String vehicleId,SignalRequestMessage srm){
         timeQueueManager.addTimeQueueEntryCondition(
             REQUESTED_QUEUE,
@@ -134,6 +205,16 @@ public class RsuControlCore {
         );
     }
 
+    /**
+     * 將車輛狀態設置為「等待中」
+     * 條件：
+     * - 允許從：請求佇列 轉入
+     * - 特殊處理：如果車輛已獲授權，則更新授權狀態
+     * - 互斥條件：不能同時在拒絕/通過/授權狀態
+     *
+     * @param vehicleId 車輛ID
+     * @param srm 信號請求消息
+     */
     public void addToWaitQueue(String vehicleId,SignalRequestMessage srm){
         if (isVehicleGranted(vehicleId)) {
             setGrantedVehicle(vehicleId,srm );
@@ -148,6 +229,16 @@ public class RsuControlCore {
         }
     }
 
+    /**
+     * 將車輛狀態設置為「已拒絕」
+     * 條件：
+     * - 允許從：任何其他狀態 轉入
+     * - 強制處理：進入此狀態會清除車輛在所有其他佇列的記錄
+     * - 互斥條件：此狀態具有最高優先級，會強制解除其他所有狀態
+     *
+     * @param vehicleId 車輛ID
+     * @param srm 信號請求消息
+     */
     public void addToRejectedQueue(String vehicleId,SignalRequestMessage srm){
         timeQueueManager.addTimeQueueEntryCondition(
             REJECT_QUEUE,
@@ -162,10 +253,26 @@ public class RsuControlCore {
         return rsuConfiguration;
     }
 
+    /**
+     * 創建標準時間佇列條目
+     *
+     * @param srm 信號請求消息
+     * @return 設置了標準超時時間的佇列條目
+     */
     private TimerQueueEntry<SignalRequestMessage> createTimeQueueEntry(SignalRequestMessage srm,int inQueueLimit){
         return new TimerQueueEntry<>(srm,inQueueLimit,TIMER_INTERVAL);
     }
 
+    /**
+     * 分析SRM請求類型
+     * 根據請求內容返回相應的斷言類型:
+     * - PASSED: 取消請求
+     * - UPDATE: 更新請求
+     * - REQUESTED: 新請求
+     *
+     * @param srm 信號請求消息
+     * @return 請求類型的斷言結果
+     */
     public SrmAssertedType assertRequestTypeBySrm(SignalRequestMessage srm){
         List<String> requestTlIdList = getRequestTrafficLightsBySrm(srm);
         //只將對RSU控制的紅綠燈發出的要求加入Queue
@@ -215,6 +322,12 @@ public class RsuControlCore {
         );
     }
 
+    /**
+     * 更新所有系統狀態
+     * - 更新計時器狀態
+     * - 更新已授權車輛狀態
+     * - 清理過期記錄
+     */
     public void updateAllState(Long sTime){
         simTime = sTime;
         updateTimer();
@@ -227,6 +340,11 @@ public class RsuControlCore {
         timeQueueManager.removeAllExpired();
     }
 
+    /**
+     * 檢查所有佇列中過期的請求,將其添加到拒絕列表
+     *  WAIT_QUEUE      → REJECT_QUEUE
+     *  REQUESTED_QUEUE → REJECT_QUEUE
+     */
     private void updateRejectVehicle() {
         Map<String,SignalRequestMessage> rejectMap = new HashMap<>();
         /* addToRejectedQueue 操作會影響其他queue，所以先列出所有需要reject的車輛後，再一次reject*/
@@ -250,6 +368,10 @@ public class RsuControlCore {
 
     }
 
+    /**
+     * 更新已授權車輛的狀態，主要功能是在沒有已授權車輛時，
+     * 從 WAIT_QUEUE 或 REQUESTED_QUEUE 取一個授權車輛
+     */
     private void updateGrantedVehicle() {
         if(getGrantedVehicleEntry() == null) {
             Map.Entry<String, TimerQueueEntry<SignalRequestMessage>> nearestVehicle = getNearestVehicleFromWaitQueue();
@@ -259,6 +381,9 @@ public class RsuControlCore {
         }
     }
 
+    /**
+     * 返回第一個（也是唯一的）授權車輛
+     */
     private Map.Entry<String,TimerQueueEntry<SignalRequestMessage>> getGrantedVehicleEntry() {
         Iterator<Map.Entry<String, TimerQueueEntry<SignalRequestMessage>>> iterator = timeQueueManager.getTimeQueue(GRANTED_QUEUE).entrySet().iterator();
         if (iterator.hasNext())
@@ -440,6 +565,27 @@ public class RsuControlCore {
         return Double.NaN;
     }
 
+    /**
+     * @param message EVA 消息
+     * 分析緊急情況，生成相應的 RSA
+     */
+    private void handleEVA(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
+        EmergencyVehicleAlert eva = message.getTcrosProtocol();
+    }
+
+    public boolean needSendRsa() {
+        return !rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).isEmpty();
+    }
+
+    public RoadSideAlert createRsa(long simOffsetTimeMs) {
+        RsaBuilder rsaBuilder = new RsaBuilder(simOffsetTimeMs);
+        rsaBuilder.setMsgCnt(1);
+
+        return rsaBuilder.create();
+    }
+
+    public void addRsaRecord(RoadSideAlert rsa) { rsaSentRecords.add(rsa); }
+
     public void exportSentMessage() throws IOException {
         File outputFile = logPath.resolve("SsmRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,ssmSentRecords);
@@ -447,6 +593,8 @@ public class RsuControlCore {
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,spatSentRecords);
         outputFile = logPath.resolve("MapDataRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,mapDataSentRecords);
+        outputFile = logPath.resolve("RsaRecords.json").toFile();
+        ObjectExportUtil.exportTcrosBaseMessage(outputFile, rsaSentRecords);
     }
 
     public void exportTrafficLightInfoToJson() throws IOException {

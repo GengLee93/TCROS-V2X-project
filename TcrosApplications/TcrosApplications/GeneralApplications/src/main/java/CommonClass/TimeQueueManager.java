@@ -6,6 +6,11 @@ import java.util.List;
 import java.util.Map;
 
 public class TimeQueueManager<T> {
+
+    /*
+     * 外層 Map：以 queueName 為鍵，代表不同的佇列
+     * 內層 Map：以 entryId 為鍵，對應一筆具倒數計時的資料
+     */
     private final Map<String,Map<String,TimerQueueEntry<T>>> queueMap;
     public TimeQueueManager(){
         queueMap = new HashMap<>();
