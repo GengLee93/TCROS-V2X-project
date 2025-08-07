@@ -3,15 +3,13 @@ package CoreModule;
 import CommonClass.DrivingRecord;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
-import CommonEnum.RequestType;
+import CommonEnum.*;
 import CommonUtil.ObjectExportUtil;
+import CommonUtil.TcrosBuilder.EvaBuilder;
 import CommonUtil.TcrosBuilder.SrmBuilder;
 import Configurations.ObuConfiguration;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
-import TcrosProtocols.SPaTData;
-import TcrosProtocols.SignalRequestMessage;
-import TcrosProtocols.SignalStatusMessage;
-import TcrosProtocols.V2XMapData;
+import TcrosProtocols.*;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.eclipse.mosaic.fed.application.ambassador.SimulationKernel;
@@ -41,6 +39,8 @@ public class ObuControlCore {
     private final List<Double> speedRecords;
     private final List<SignalRequestMessage> srmRecords;
     private final List<SignalStatusMessage> ssmRecords;
+    private final List<RoadSideAlert> rsaRecords;
+    private final List<EmergencyVehicleAlert> evaRecords;
     private final List<DrivingRecord> drivingRecords;
     private final Path logPath;
     private Long simTime;
@@ -53,6 +53,9 @@ public class ObuControlCore {
     private final List<String> routeConnections;
     private int routeLanesIndex;
     private static final int RECEIVED_TIME_OUT_LIMIT = 5;
+    private int evaMsgCnt = 0;
+    private double heading;
+    private final String evaVehicleId;
 
     public ObuControlCore(String vid, ObuConfiguration configuration,Path lPath){
         logPath = Path.of(lPath.toString());
@@ -73,6 +76,9 @@ public class ObuControlCore {
         srmRecords = new ArrayList<>();
         ssmRecords = new ArrayList<>();
         drivingRecords = new ArrayList<>();
+        rsaRecords = new ArrayList<>();
+        evaRecords = new ArrayList<>();
+        evaVehicleId = vid;
     }
 
     public void updateVehicleData(@NotNull VehicleData newVehicleData,Long sTime) {
@@ -92,6 +98,7 @@ public class ObuControlCore {
             spatTimer.updateTimer();
         }
         updateRouteInfo(newVehicleData);
+        heading = newVehicleData.getHeading();
     }
 
     private void updateRouteInfo(@NotNull VehicleData vehicleData){
@@ -318,4 +325,46 @@ public class ObuControlCore {
             mapper.writer(schema).writeValues(writer).writeAll(drivingRecords);
         }
     }
+    private int nextEvaMsgCnt() {
+        int current = evaMsgCnt;
+        evaMsgCnt = (evaMsgCnt + 1) % 128;
+        return current;
+    }
+
+    public boolean needSendEva(){ return needSendSrm();}
+
+    public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
+        EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
+
+        evaBuilder.setId(evaVehicleId);
+        evaBuilder.setResponseType(ResponseType.emergency);
+        //details
+        evaBuilder.setBasicType(BasicType.special);
+
+        evaBuilder.rsaBuilder
+                .setMsgCnt(nextEvaMsgCnt())
+                .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
+                //description
+                .setPriority(RsaPriority.PRIORITY_7)
+                .setHeadingBitString(Double.toString(heading))
+                //extent = Object.extent
+
+                //position
+                .setHeadingByDegree(heading)
+                .SetPosition(currentPoint)
+                .setSpeed(speedRecords.get(-1), TransmissionState.UNAVAILABLE)
+                //Accuracy
+                .setConfidence(
+                        TimeConfidence.Unavailable,
+                        PosLevel.UNAVAILABLE,
+                        ElevationLevel.UNAVAILABLE,
+                        HeadingConfidence.UNAVAILABLE,
+                        SpeedLevel.UNAVAILABLE,
+                        ThrottleConfidence.UNAVAILABLE
+                );
+
+        return evaBuilder.create();
+    }
+
+    public void addEvaRecord(EmergencyVehicleAlert eva){ evaRecords.add(eva);}
 }

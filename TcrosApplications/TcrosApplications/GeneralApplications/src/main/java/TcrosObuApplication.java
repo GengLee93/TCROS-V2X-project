@@ -59,6 +59,9 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         if (obuControlCore.needSendSrm()) {
             sendSrm();
         }
+        if (obuControlCore.needSendEva()) {
+            sendEva();
+        }
     }
     private void updateLog(VehicleData newVehicleData){
         getLog().infoSimTime(this,"==================");
@@ -88,9 +91,24 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         getOs().getAdHocModule().sendV2xMessage(sendMessage);
         getLog().infoSimTime(this, "Send SRM,Request junction.{}",obuControlCore.getUpcomingNode().getId());
     }
+
     private long getRealMilliTimeInSimOffset(){
         return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
     }
+
+    private void sendEva(){
+        final MessageRouting routing = getOperatingSystem()
+                .getAdHocModule()
+                .createMessageRouting()
+                .geoBroadCast(new GeoCircle(getOs().getPosition(), GEO_BOARD_CAST_RADIUS));
+        EmergencyVehicleAlert eva = obuControlCore.createEva(getRealMilliTimeInSimOffset());
+        obuControlCore.addEvaRecord(eva);
+        TcrosProtocolV2xMessage<EmergencyVehicleAlert> sendMessage =  new TcrosProtocolV2xMessage<>(routing,eva,EmergencyVehicleAlert.class);
+        sendMessage.setSenderId(getOs().getId());
+        getOs().getAdHocModule().sendV2xMessage(sendMessage);
+        getLog().infoSimTime(this, "Send EVA,info junction.{}",obuControlCore.getUpcomingNode().getId());
+    }
+
     @Override
     public void onMessageReceived(ReceivedV2xMessage receivedV2xMessage) {
         if (receivedV2xMessage.getMessage() instanceof TcrosProtocolV2xMessage<?> message) {
