@@ -2,5 +2,17 @@
   "stopBroadcastStartTime" :0,
   "stopBroadcastEndTime" : 0,
   "errorSrmBroadcastStartTime" :0,
-  "errorSrmBroadcastEndTime" : 0
+  "errorSrmBroadcastEndTime" : 0,
+  "posAccuracy" : {
+    "semiMajor" : 0,
+    "semiMinor" : 0,
+    "orientation" : 0
+  },
+  "mass" : 255,
+  "description": [
+    {
+      "code": 1793,
+      "description": "緊急車輛"
+    }
+  ]
 }

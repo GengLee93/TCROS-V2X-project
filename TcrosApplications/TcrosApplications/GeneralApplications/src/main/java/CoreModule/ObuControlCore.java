@@ -1,6 +1,9 @@
 package CoreModule;
 
 import CommonClass.DrivingRecord;
+import CommonClass.EvaClass.Details;
+import CommonClass.EvaClass.Events;
+import CommonClass.RsaClass.PosAccuracy;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
 import CommonEnum.*;
@@ -56,6 +59,9 @@ public class ObuControlCore {
     private int evaMsgCnt = 0;
     private double heading;
     private final String evaVehicleId;
+    private final PosAccuracy accuracy;
+    private final int mass;
+    private final List<ITISCode> description;
 
     public ObuControlCore(String vid, ObuConfiguration configuration,Path lPath){
         logPath = Path.of(lPath.toString());
@@ -79,6 +85,10 @@ public class ObuControlCore {
         rsaRecords = new ArrayList<>();
         evaRecords = new ArrayList<>();
         evaVehicleId = vid;
+        accuracy = configuration.posAccuracy;
+        mass = configuration.mass;
+        description = configuration.description;
+
     }
 
     public void updateVehicleData(@NotNull VehicleData newVehicleData,Long sTime) {
@@ -188,6 +198,10 @@ public class ObuControlCore {
             handleMapData((TcrosProtocolV2xMessage<V2XMapData>) message);
         } else if (protocolClassName.equals(SignalStatusMessage.class.getName())) {
             handleSsm((TcrosProtocolV2xMessage<SignalStatusMessage>) message);
+        } else if (protocolClassName.equals(RoadSideAlert.class.getName())) {
+            handleRsa((TcrosProtocolV2xMessage<RoadSideAlert>) message);
+        } else if (protocolClassName.equals(EmergencyVehicleAlert.class.getName())) {
+            handleEva((TcrosProtocolV2xMessage<EmergencyVehicleAlert>) message);
         }
     }
 
@@ -338,22 +352,31 @@ public class ObuControlCore {
 
         evaBuilder.setId(evaVehicleId);
         evaBuilder.setResponseType(ResponseType.emergency);
-        //details
+        evaBuilder.setDetails(new Details(
+                SirenUse.unavailable,
+                LightUse.inUse,
+                Multi.singleVehicle,
+                new Events(Event.peEmergencyResponse),
+                ResponseType.emergency
+
+        ));
+        evaBuilder.setMass(mass);
         evaBuilder.setBasicType(BasicType.special);
 
+        // rsa msg
         evaBuilder.rsaBuilder
                 .setMsgCnt(nextEvaMsgCnt())
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
-                //description
+                .setDescriptions(description)
                 .setPriority(RsaPriority.PRIORITY_7)
                 .setHeadingBitString(Double.toString(heading))
-                //extent = Object.extent
+                .setExtent(Extent.useFor500meters)
 
                 //position
                 .setHeadingByDegree(heading)
                 .SetPosition(currentPoint)
-                .setSpeed(speedRecords.get(-1), TransmissionState.UNAVAILABLE)
-                //Accuracy
+                .setSpeed(getAverageSpeed(), TransmissionState.UNAVAILABLE)
+                .setAccuracy(accuracy.semiMajor(),accuracy.semiMinor(),accuracy.orientation())
                 .setConfidence(
                         TimeConfidence.Unavailable,
                         PosLevel.UNAVAILABLE,
@@ -367,4 +390,14 @@ public class ObuControlCore {
     }
 
     public void addEvaRecord(EmergencyVehicleAlert eva){ evaRecords.add(eva);}
+
+    private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message){
+        RoadSideAlert rsa = message.getTcrosProtocol();
+        rsaRecords.add(rsa);
+    }
+
+    private void handleEva(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message){
+        EmergencyVehicleAlert eva = message.getTcrosProtocol();
+        evaRecords.add(eva);
+    }
 }
