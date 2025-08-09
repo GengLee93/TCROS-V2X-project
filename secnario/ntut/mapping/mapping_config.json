@@ -4,7 +4,7 @@
       "name": "Car",
       "length": "4 m",
       "minGap": "2.5 m",
-      "maxSpeed": "36 m/s",
+      "maxSpeed": "70.0 m/s",
       "vehicleClass": "Car",
       "accel": 2.6,
       "decel": 4.5,
@@ -12,19 +12,51 @@
       "tau": 1.0,
       "speedFactor": 1.0,
       "deviations": {
-        "speedFactor": 0.1
-      }
+        "length": 0.0,
+        "width": 0.0,
+        "height": 0.0,
+        "minGap": 0.0,
+        "maxSpeed": 0.0,
+        "speedFactor": 0.1,
+        "accel": 0.0,
+        "decel": 0.0,
+        "tau": 0.0
+      },
+      "applications": [
+        "TcrosObuApplication"
+      ]
+    },
+    {
+      "name": "RSU",
+      "applications": [
+        "TcrosRsuApplication"
+      ]
+    },
+    {
+      "name": "TrafficLight",
+      "applications": [
+        "TcrosTrafficLightApplication"
+      ]
+    }
+  ],
+  "servers": [
+    {
+      "name": "ConnectionInfoServer",
+      "group": "ConnectionInfoServer",
+      "applications": [
+        "ConnectionInfoServerApplication"
+      ]
     }
   ],
   "vehicles": [
     {
       "startingTime": "5 s",
-      "maxTime": "700 s",
-      "targetFlow": 1200.0,
+      "maxTime": "100 s",
+      "targetFlow": 1800.0,
       "spawningMode": "CONSTANT",
-      "maxNumberVehicles": 333,
+      "maxNumberVehicles": 1,
       "laneSelectionMode": "BEST",
-      "departSpeed": "0 m/s",
+      "departSpeed": "0.0 m/s",
       "departSpeedMode": "MAXIMUM",
       "types": [
         {
@@ -38,10 +70,10 @@
     },
     {
       "startingTime": "5 s",
-      "maxTime": "700 s",
-      "targetFlow": 1200.0,
+      "maxTime": "100 s",
+      "targetFlow": 1800.0,
       "spawningMode": "CONSTANT",
-      "maxNumberVehicles": 333,
+      "maxNumberVehicles": 1,
       "laneSelectionMode": "BEST",
       "departSpeed": "0 m/s",
       "departSpeedMode": "MAXIMUM",
@@ -57,22 +89,25 @@
     },
     {
       "startingTime": "5 s",
-      "maxTime": "700 s",
-      "targetFlow": 1200.0,
+      "maxTime": "100 s",
+      "targetFlow": 1800.0,
       "spawningMode": "CONSTANT",
-      "maxNumberVehicles": 333,
+      "maxNumberVehicles": 1,
       "laneSelectionMode": "BEST",
       "departSpeed": "0 m/s",
       "departSpeedMode": "MAXIMUM",
       "types": [
         {
           "name": "Car",
-          "weight": 1.0
+          "weight": 1.0,
+          "applications": []
         }
       ],
       "departConnectionIndex": 0,
       "pos": 0,
       "route": "3"
     }
-  ]
+  ],
+  "trafficLights": [],
+  "rsus": []
 }
