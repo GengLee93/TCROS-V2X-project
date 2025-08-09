@@ -8,8 +8,10 @@
         <outputRelativeToContentRoot value="true" />
         <module name="TcrosProtocol" />
         <module name="GeneralApplications" />
-        <module name="LLMApplication" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="LLMApplication" target="20" />
+    </bytecodeTargetLevel>
   </component>
 </project>

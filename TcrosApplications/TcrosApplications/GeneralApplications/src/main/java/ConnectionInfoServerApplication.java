@@ -16,7 +16,7 @@ public class ConnectionInfoServerApplication extends ConfigurableApplication<Con
     public void onStartup() {
         Locale.setDefault(Locale.ENGLISH);
         SharedLaneInfo.initialize(getConfiguration());
-        getLog().info("ConnectionInfoServerApplication has benn initialize!");
+        getLog().info("ConnectionInfoServerApplication has been initialized!");
         getLog().info(SharedLaneInfo.getInstance().toString());
     }
 

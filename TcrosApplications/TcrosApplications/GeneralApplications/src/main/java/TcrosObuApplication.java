@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguration,VehicleOperatingSystem> implements VehicleApplication, CommunicationApplication {
+public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguration, VehicleOperatingSystem> implements VehicleApplication, CommunicationApplication {
     private static final int GEO_BOARD_CAST_RADIUS = 200;
     private ObuControlCore obuControlCore;
     private RealTimeReferencePoint timeReferencePoint;
@@ -34,7 +34,7 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     public void onStartup() {
         getLog().infoSimTime(this,"Vehicle has start!");
 
-        obuControlCore = new ObuControlCore(getOs().getId(),getConfiguration(),getLog().getUnitLogDirectory());
+        obuControlCore = new ObuControlCore(getOs().getId(),getConfiguration(), getLog().getUnitLogDirectory());
         timeReferencePoint = RealTimeReferencePoint.getInstance();
         getOs().getAdHocModule().enable(new AdHocModuleConfiguration()
                 .addRadio()

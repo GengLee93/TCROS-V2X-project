@@ -1,0 +1,78 @@
+{
+  "prototypes": [
+    {
+      "name": "Car",
+      "length": "4 m",
+      "minGap": "2.5 m",
+      "maxSpeed": "36 m/s",
+      "vehicleClass": "Car",
+      "accel": 2.6,
+      "decel": 4.5,
+      "sigma": 0.5,
+      "tau": 1.0,
+      "speedFactor": 1.0,
+      "deviations": {
+        "speedFactor": 0.1
+      }
+    }
+  ],
+  "vehicles": [
+    {
+      "startingTime": "5 s",
+      "maxTime": "700 s",
+      "targetFlow": 1200.0,
+      "spawningMode": "CONSTANT",
+      "maxNumberVehicles": 333,
+      "laneSelectionMode": "BEST",
+      "departSpeed": "0 m/s",
+      "departSpeedMode": "MAXIMUM",
+      "types": [
+        {
+          "name": "Car",
+          "weight": 1.0
+        }
+      ],
+      "departConnectionIndex": 0,
+      "pos": 0,
+      "route": "1"
+    },
+    {
+      "startingTime": "5 s",
+      "maxTime": "700 s",
+      "targetFlow": 1200.0,
+      "spawningMode": "CONSTANT",
+      "maxNumberVehicles": 333,
+      "laneSelectionMode": "BEST",
+      "departSpeed": "0 m/s",
+      "departSpeedMode": "MAXIMUM",
+      "types": [
+        {
+          "name": "Car",
+          "weight": 1.0
+        }
+      ],
+      "departConnectionIndex": 0,
+      "pos": 0,
+      "route": "2"
+    },
+    {
+      "startingTime": "5 s",
+      "maxTime": "700 s",
+      "targetFlow": 1200.0,
+      "spawningMode": "CONSTANT",
+      "maxNumberVehicles": 333,
+      "laneSelectionMode": "BEST",
+      "departSpeed": "0 m/s",
+      "departSpeedMode": "MAXIMUM",
+      "types": [
+        {
+          "name": "Car",
+          "weight": 1.0
+        }
+      ],
+      "departConnectionIndex": 0,
+      "pos": 0,
+      "route": "3"
+    }
+  ]
+}

@@ -14,7 +14,7 @@
 
     <modules>
         <module>GeneralApplications</module>
-        <module>LLMApplication</module>
+<!--        <module>LLMApplication</module>-->
         <module>TcrosProtocol</module>
     </modules>
 
@@ -42,12 +42,12 @@
                                     <version>0.0.1</version>
                                     <type>jar</type>
                                 </artifactItem>
-                                <artifactItem>
-                                    <groupId>islab.ntut.edu</groupId>
-                                    <artifactId>LLMApplication</artifactId>
-                                    <version>0.0.1</version>
-                                    <type>jar</type>
-                                </artifactItem>
+<!--                                <artifactItem>-->
+<!--                                    <groupId>islab.ntut.edu</groupId>-->
+<!--                                    <artifactId>LLMApplication</artifactId>-->
+<!--                                    <version>0.0.1</version>-->
+<!--                                    <type>jar</type>-->
+<!--                                </artifactItem>-->
                                 <artifactItem>
                                     <groupId>islab.ntut.edu</groupId>
                                     <artifactId>TcrosProtocol</artifactId>

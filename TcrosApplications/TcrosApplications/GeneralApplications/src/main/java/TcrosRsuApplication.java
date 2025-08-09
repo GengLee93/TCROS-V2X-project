@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 
 public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguration, RoadSideUnitOperatingSystem>
         implements CommunicationApplication{
@@ -51,6 +52,7 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         Event newEvent = new Event(getOs().getSimulationTime() + EVENT_START_TIME, this);
         getOs().getEventManager().addEvent(newEvent);
     }
+
     private void initBasicAttribute(){
         controlCore = new RsuControlCore(
                 getOs().getPosition(),
@@ -66,11 +68,13 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         timeReferencePoint = RealTimeReferencePoint.getInstance();
         geoBoardCastArea = new GeoCircle(getOs().getPosition(), GEO_BOARD_CAST_RADIUS);
     }
+
     @Override
     public void processEvent(Event event) {
         getLog().infoSimTime(this,"RSU has catch event.");
         eventTarget();
     }
+
     @Override
     public void onMessageReceived(ReceivedV2xMessage receivedV2xMessage) {
         controlCore.handleMessage(receivedV2xMessage.getMessage());
@@ -111,6 +115,7 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     private void updateMessageSend(){
         broadCastSpatAndMapMessage();
         broadCastSsmToAllQueued();
+        broadCastRsa();
     }
 
     private void broadCastSpatAndMapMessage(){
@@ -136,6 +141,20 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
             // 記錄所有交通燈控制信息其對應的交通燈節點 ID 到 log
             for(TrafficLightControlInfo info : tlMessage.getTrafficLightControlInfoList()){
                 getLog().info(info.getNodeId());
+            }
+        }
+    }
+
+    private void broadCastRsa() {
+        if (controlCore.needSendRsa()) {
+            List<RoadSideAlert> rsaList = controlCore.getActiveRsaList();
+            for (RoadSideAlert rsa : rsaList) {
+                final MessageRouting routing = createGeoBroadCastMessageRouting();
+                controlCore.addRsaRecord(rsa);
+                TcrosProtocolV2xMessage<RoadSideAlert> rsaMessage = new TcrosProtocolV2xMessage<>(routing, rsa, RoadSideAlert.class);
+                rsaMessage.setSenderId(getOs().getId());
+                getOs().getAdHocModule().sendV2xMessage(rsaMessage);
+                getLog().infoSimTime(this, "RSA has been sent.");
             }
         }
     }

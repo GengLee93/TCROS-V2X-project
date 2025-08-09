@@ -34,6 +34,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * RSU 控制核心
@@ -82,7 +83,7 @@ public class RsuControlCore {
      * @param configuration RSU 設定資訊
      * @param
      */
-    public RsuControlCore( GeoPoint point, RsuConfiguration configuration,Path lPath){
+    public RsuControlCore(GeoPoint point, RsuConfiguration configuration, Path lPath) {
         geoPoint = point;
         simTime = 0L;
         logPath = Path.of(lPath.toString());
@@ -239,7 +240,7 @@ public class RsuControlCore {
      * @param vehicleId 車輛ID
      * @param srm 信號請求消息
      */
-    public void addToRejectedQueue(String vehicleId,SignalRequestMessage srm){
+    public void addToRejectedQueue(String vehicleId, SignalRequestMessage srm){
         timeQueueManager.addTimeQueueEntryCondition(
             REJECT_QUEUE,
             vehicleId,
@@ -259,7 +260,7 @@ public class RsuControlCore {
      * @param srm 信號請求消息
      * @return 設置了標準超時時間的佇列條目
      */
-    private TimerQueueEntry<SignalRequestMessage> createTimeQueueEntry(SignalRequestMessage srm,int inQueueLimit){
+    private TimerQueueEntry<SignalRequestMessage> createTimeQueueEntry(SignalRequestMessage srm, int inQueueLimit){
         return new TimerQueueEntry<>(srm,inQueueLimit,TIMER_INTERVAL);
     }
 
@@ -571,17 +572,38 @@ public class RsuControlCore {
      */
     private void handleEVA(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
+        String eventId = "EVA_" + eva.id();
+
+        RoadSideAlert rsa = new RsaBuilder(simTime)
+                .setMsgCnt(1)
+                .create();
+
+        if (rsaTimeQueueManager.isKeyInQueue(RSA_QUEUE, eventId)) {
+            rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).remove(eventId);
+        }
+
+        rsaTimeQueueManager.addTimeQueueEntryCondition(
+                RSA_QUEUE,
+                eventId,
+                new TimerQueueEntry<>(rsa, IN_QUEUE_TIME_LIMIT, TIMER_INTERVAL),
+                List.of(),
+                List.of(RSA_QUEUE)
+        );
     }
+
+//    private void handleTrafficEvent(RoadSideAlert rsa) { }
 
     public boolean needSendRsa() {
         return !rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).isEmpty();
     }
 
-    public RoadSideAlert createRsa(long simOffsetTimeMs) {
-        RsaBuilder rsaBuilder = new RsaBuilder(simOffsetTimeMs);
-        rsaBuilder.setMsgCnt(1);
+    public List<RoadSideAlert> getActiveRsaList() {
+        rsaTimeQueueManager.updateAllQueue();
+        rsaTimeQueueManager.removeAllExpired();
 
-        return rsaBuilder.create();
+        return rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).values().stream()
+                .map(TimerQueueEntry::getMessage)
+                .collect(Collectors.toList());
     }
 
     public void addRsaRecord(RoadSideAlert rsa) { rsaSentRecords.add(rsa); }

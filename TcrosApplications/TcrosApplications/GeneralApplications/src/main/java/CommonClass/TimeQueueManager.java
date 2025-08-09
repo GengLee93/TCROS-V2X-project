@@ -31,7 +31,7 @@ public class TimeQueueManager<T> {
         if(!queueMap.containsKey(queueName))
             return;
         for(String qName : addIfNotIn){
-            if(isKeyInQueue(qName,entryId)){
+            if(isKeyInQueue(qName, entryId)){
                 return;
             }
         }

@@ -8,6 +8,7 @@ import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.EvaBuilder;
 import CommonUtil.TcrosBuilder.SrmBuilder;
 import Configurations.ObuConfiguration;
+import Configurations.VehicleConfiguration;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
@@ -57,7 +58,7 @@ public class ObuControlCore {
     private double heading;
     private final String evaVehicleId;
 
-    public ObuControlCore(String vid, ObuConfiguration configuration,Path lPath){
+    public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
         vehicleId = Integer.parseInt(vid.substring(vid.indexOf("_")+1));
         stopBroadcastStartTime = configuration.stopBroadcastStartTime * TIME.SECOND;

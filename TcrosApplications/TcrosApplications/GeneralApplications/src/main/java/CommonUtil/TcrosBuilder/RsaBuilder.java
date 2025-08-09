@@ -72,18 +72,12 @@ public class RsaBuilder {
     }
 
     public RsaBuilder addDescription(ITISCode code) {
-        if (code != null && !code.equals(typeEvent)) {
+        if (code != null
+                && !code.equals(typeEvent)          // 不該跟主要事件重複
+                && !this.description.contains(code) // 不重複加入相同事件
+                && description.size() < 8)          // 最多8則 ITIS code 事件描述
+        {
             this.description.add(code);
-        }
-        return this;
-    }
-
-    public RsaBuilder setDescriptions(List<ITISCode> codes) {
-        this.description.clear();
-        for (ITISCode code : codes) {
-            if (!code.equals(typeEvent)) {
-                this.description.add(code);
-            }
         }
         return this;
     }
