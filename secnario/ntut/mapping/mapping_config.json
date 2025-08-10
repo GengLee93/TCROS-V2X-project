@@ -266,5 +266,150 @@
       "tlGroupId": "631669073"
     }
   ],
-  "rsus": []
+  "rsus": [
+    {
+      "label": "A01/5372642442/631668976/631668981",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.042341,
+        "longitude": 121.532819
+      }
+    },
+    {
+      "label": "A02/655375573",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.042929,
+        "longitude": 121.530692
+      }
+    },
+    {
+      "label": "A03/9383263990/9383263991/655375241",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.043391,
+        "longitude": 121.529605
+      }
+    },
+    {
+      "label": "A04/9383263987",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.043938,
+        "longitude": 121.526926
+      }
+    },
+    {
+      "label": "A05/9383240479",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.044439,
+        "longitude": 121.525069
+      }
+    },
+    {
+      "label": "A06/9383240482/9383240484",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.044798,
+        "longitude": 121.523398
+      }
+    },
+    {
+      "label": "A07/9402558762",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.046312,
+        "longitude": 121.523722
+      }
+    },
+    {
+      "label": "A08/9402558756/9402558757/2034292613",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.045317,
+        "longitude": 121.521261
+      }
+    },
+    {
+      "label": "A09/2730537789",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.044321,
+        "longitude": 121.523152
+      }
+    },
+    {
+      "label": "A10/1720485456",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.043571,
+        "longitude": 121.523039
+      }
+    },
+    {
+      "label": "A11/1720485436",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.042457,
+        "longitude": 121.522726
+      }
+    },
+    {
+      "label": "A99/1720485460",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.041080,
+        "longitude": 121.522298
+      }
+    },
+    {
+      "label": "A12/631668984/631669439",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.040254,
+        "longitude": 121.532454
+      }
+    },
+    {
+      "label": "A13/1973482483/2178660139",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.040386,
+        "longitude": 121.531337
+      }
+    },
+    {
+      "label": "A14/1446842515",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.040571,
+        "longitude": 121.530089
+      }
+    },
+    {
+      "label": "A15/648173087/280389395",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.040897,
+        "longitude": 121.529207
+      }
+    },
+    {
+      "label": "A16/1446842516",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.041096,
+        "longitude": 121.528329
+      }
+    },
+    {
+      "label": "A17/2575216314/1926948289/280389388",
+      "name": "RSU",
+      "position": {
+        "latitude": 25.041424,
+        "longitude": 121.526603
+      }
+    }
+  ]
 }
