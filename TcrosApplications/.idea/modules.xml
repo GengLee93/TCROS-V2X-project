@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/TcrosApplications.iml" filepath="$PROJECT_DIR$/.idea/TcrosApplications.iml" />
+      <module fileurl="file://$PROJECT_DIR$/TcrosApplications/TcrosApplications.iml" filepath="$PROJECT_DIR$/TcrosApplications/TcrosApplications.iml" />
     </modules>
   </component>
 </project>

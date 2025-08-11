@@ -80,7 +80,6 @@ public class RsuControlCore {
     /**
      * @param point RSU 地理位置
      * @param configuration RSU 設定資訊
-     * @param
      */
     public RsuControlCore( GeoPoint point, RsuConfiguration configuration,Path lPath){
         geoPoint = point;
@@ -571,17 +570,37 @@ public class RsuControlCore {
      */
     private void handleEVA(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
+        String eventId = "EVA_" + eva.id();
+
+        RoadSideAlert rsa = new RsaBuilder(simTime)
+                .setMsgCnt(1)
+                .create();
+
+        if (rsaTimeQueueManager.isKeyInQueue(RSA_QUEUE, eventId)) {
+            rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).remove(eventId);
+        }
+
+        rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).put(
+                eventId,
+                new TimerQueueEntry<>(rsa, IN_QUEUE_TIME_LIMIT, TIMER_INTERVAL)
+        );
+    }
+
+    /**
+     * 獲取所有活動的 RSA
+     */
+    public List<RoadSideAlert> getActiveRsaList() {
+        List<RoadSideAlert> activeRsaList = new ArrayList<>();
+        for (TimerQueueEntry<RoadSideAlert> entry : rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).values()) {
+            if (!entry.isExpired()) {
+                activeRsaList.add(entry.getMessage());
+            }
+        }
+        return activeRsaList;
     }
 
     public boolean needSendRsa() {
         return !rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).isEmpty();
-    }
-
-    public RoadSideAlert createRsa(long simOffsetTimeMs) {
-        RsaBuilder rsaBuilder = new RsaBuilder(simOffsetTimeMs);
-        rsaBuilder.setMsgCnt(1);
-
-        return rsaBuilder.create();
     }
 
     public void addRsaRecord(RoadSideAlert rsa) { rsaSentRecords.add(rsa); }
