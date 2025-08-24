@@ -1,17 +1,17 @@
 {
-  "label": "A00",
+  "label": "A15",
   "priorityStartTime": 0,
   "priorityEndTime": 999,
   "trafficLightInfoList": [
     {
       "id": "tl_1",
-      "tlGroup": "2444664369",
-      "nodeId": "2444664369"
+      "tlGroup": "648173087",
+      "nodeId": "648173087"
     },
     {
       "id": "tl_2",
-      "tlGroup": "2877022366",
-      "nodeId": "2877022366"
+      "tlGroup": "280389395",
+      "nodeId": "280389395"
     }
   ]
 }
