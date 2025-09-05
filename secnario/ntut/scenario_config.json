@@ -1,7 +1,7 @@
 {
     "simulation": {
         "id": "ntut",
-        "duration": "240s",
+        "duration": "350s",
         "randomSeed": 268965854,
         "projection": {
             "centerCoordinates": {
@@ -26,7 +26,7 @@
     "federates": {
         "application": true,
         "environment": false,
-        "cell": true,
+        "cell": false,
         "ns3": true,
         "omnetpp": false,
         "output": true,

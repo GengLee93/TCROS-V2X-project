@@ -4,12 +4,12 @@
   "priorityEndTime": 999,
   "trafficLightInfoList": [
     {
-      "id": "tl_1",
+      "id": "tl_129",
       "tlGroup": "655375241",
       "nodeId": "655375241"
     },
     {
-      "id": "tl_2",
+      "id": "tl_130",
       "tlGroup": "655375242",
       "nodeId": "655375242"
     }

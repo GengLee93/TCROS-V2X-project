@@ -26,7 +26,18 @@
                     <entry>Mapping.VehicleType.Name</entry>
                 </entries>
             </subscription>
+            <subscription id="TrafficLightRegistration">
+                <entries>
+                    <entry>"TRAFFICLIGHT_REGISTRATION"</entry>
+                    <entry>Time</entry>
+                    <entry>Mapping.Name</entry>
+                    <entry>Mapping.Applications</entry>
+                    <entry>TrafficLightGroup.FirstPosition.Latitude</entry>
+                    <entry>TrafficLightGroup.FirstPosition.Longitude</entry>
+                </entries>
+            </subscription>
         </subscriptions>
+        
     </output>
 
     <output id="websocket" enabled="true" loader="org.eclipse.mosaic.fed.output.generator.websocket.WebsocketVisualizerLoader">
@@ -38,6 +49,7 @@
             <subscription id="V2xMessageTransmission" enabled="true"/>
             <subscription id="VehicleRegistration" enabled="true"/>
             <subscription id="RsuRegistration" enabled="true"/>
+            <subscription id="TrafficLightRegistration" enabled="true"/>
         </subscriptions>
     </output>
 </configuration>
