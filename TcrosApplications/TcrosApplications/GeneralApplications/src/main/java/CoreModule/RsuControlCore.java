@@ -7,8 +7,11 @@ import CommonClass.SsmClass.SigStatus;
 import CommonClass.SsmClass.Status;
 import CommonClass.TimeQueueManager;
 import CommonClass.TimerQueueEntry;
+import CommonClass.EventWrapper.RsaEventWrapper;
+import CommonEnum.ITISCode;
 import CommonEnum.RequestStatus;
 import CommonEnum.RequestType;
+import CommonEnum.RsaPriority;
 import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.MapDataBuilder;
 import CommonUtil.TcrosBuilder.SpatBuilder;
@@ -29,12 +32,13 @@ import org.eclipse.mosaic.lib.geo.MutableGeoPoint;
 import org.eclipse.mosaic.lib.objects.v2x.MessageRouting;
 import org.eclipse.mosaic.lib.objects.v2x.V2xMessage;
 import org.eclipse.mosaic.rti.TIME;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * RSU 控制核心
@@ -44,19 +48,23 @@ import java.util.stream.Collectors;
  * 3. V2X 消息處理
  */
 public class RsuControlCore {
+    private static final Logger log = LoggerFactory.getLogger(RsuControlCore.class);
     private final GeoPoint geoPoint;
     private final RsuConfiguration rsuConfiguration;
     private final Long priorityStartTime;
     private final Long priorityEndTime;
     private final Path logPath;
     private Long simTime;
+    private int rsaMsgCounter = new Random().nextInt(128);  // rsa 訊息序列識別，能來自同一來源（同一 RSU）
 
     // 時間佇列管理器，負責管理多個不同狀態的車輛請求佇列
     private TimeQueueManager<SignalRequestMessage> timeQueueManager;
-    private TimeQueueManager<RoadSideAlert> rsaTimeQueueManager;
+    private TimeQueueManager<RsaEventWrapper> rsaTimeQueueManager;
 
-    // 交通號誌狀態資訊對應表，key 為節點 ID，value 為號誌狀態
+    // 交通號誌狀態資訊對應表，key: 節點ID；value: 號誌狀態
     private Map<String, TrafficLightsStateInfo> trafficLightsStateInfoMap;
+    private Map<String, Integer> lastMsgCntMap = new HashMap<>();
+    private Map<String, Long> lastMsgTimeMap = new HashMap<>();
 
     // ==================== 訊息記錄 ====================
     private final List<V2XMapData> mapDataSentRecords;
@@ -64,7 +72,7 @@ public class RsuControlCore {
     private final List<SignalStatusMessage> ssmSentRecords;
     private final List<RoadSideAlert> rsaSentRecords;
 
-    // ==================== 系統常數 ====================
+    // ==================== 模擬常數 ====================
     private static final int IN_QUEUE_TIME_LIMIT = 3;
     private static final int WAIT_QUEUE_TIME_LIMIT = 3;
     private static final int REJECT_QUEUE_TIME_LIMIT = 10;
@@ -81,7 +89,7 @@ public class RsuControlCore {
     /**
      * @param point RSU 地理位置
      * @param configuration RSU 設定資訊
-     * @param
+     * @param lPath Log 輸出路徑
      */
     public RsuControlCore(GeoPoint point, RsuConfiguration configuration, Path lPath) {
         geoPoint = point;
@@ -436,7 +444,7 @@ public class RsuControlCore {
                 getGrantedVehicleEntry() != null;
     }
 
-    private List<SignalRequestMessage> getMessageList( Map<String, TimerQueueEntry<SignalRequestMessage>> messageMap) {
+    private List<SignalRequestMessage> getMessageList(Map<String, TimerQueueEntry<SignalRequestMessage>> messageMap) {
         List<SignalRequestMessage> srmList = new ArrayList<>();
         for (TimerQueueEntry<SignalRequestMessage> message : messageMap.values()) {
             srmList.add(message.getMessage());
@@ -567,16 +575,30 @@ public class RsuControlCore {
     }
 
     /**
-     * @param message EVA 消息
+     * @param message EVA 消息n
      * 分析緊急情況，生成相應的 RSA
      */
     private void handleEVA(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
         String eventId = "EVA_" + eva.id();
 
-        RoadSideAlert rsa = new RsaBuilder(simTime)
-                .setMsgCnt(1)
-                .create();
+        // TODO: 需要判斷 msgCnt
+        if (!isFreshMsg(eva.id(), eva.rsaMsg().msgCnt(), simTime)) {
+            return;
+        }
+
+        RsaEventWrapper wrapper = new RsaEventWrapper(
+                eventId,
+                ITISCode.EMERGENCY_VEHICLE,
+                eva.rsaMsg().description(),
+                eva.rsaMsg().position().utcTime(),
+                eva.rsaMsg().position().lat(),
+                eva.rsaMsg().position().lon(),
+                eva.rsaMsg().position().elevation(),
+                RsaPriority.PRIORITY_7,
+                eva.rsaMsg().heading(),
+                eva.rsaMsg().extent()
+        );
 
         if (rsaTimeQueueManager.isKeyInQueue(RSA_QUEUE, eventId)) {
             rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).remove(eventId);
@@ -585,26 +607,67 @@ public class RsuControlCore {
         rsaTimeQueueManager.addTimeQueueEntryCondition(
                 RSA_QUEUE,
                 eventId,
-                new TimerQueueEntry<>(rsa, IN_QUEUE_TIME_LIMIT, TIMER_INTERVAL),
+                new TimerQueueEntry<>(wrapper, IN_QUEUE_TIME_LIMIT, TIMER_INTERVAL),
                 List.of(),
                 List.of(RSA_QUEUE)
         );
     }
 
-//    private void handleTrafficEvent(RoadSideAlert rsa) { }
-
-    public boolean needSendRsa() {
-        return !rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).isEmpty();
+    private int nextRsaMsgCnt() {
+        rsaMsgCounter = (rsaMsgCounter + 1) % 128;
+        return rsaMsgCounter;
     }
 
-    public List<RoadSideAlert> getActiveRsaList() {
+    private boolean isFreshMsg(String deviceId, int msgCnt, long currentSimTime) {
+        Integer lastCnt = lastMsgCntMap.get(deviceId);
+        Long lastTime = lastMsgTimeMap.get(deviceId);
+        if (lastCnt != null && lastTime != null) {
+            boolean sameMsgCnt = lastCnt == msgCnt;
+            boolean tooSoon = (currentSimTime - lastTime) < 1000; // 1 秒內重複
+            if (sameMsgCnt && tooSoon) {
+                return false; // 重播或太快
+            }
+        }
+
+        lastMsgCntMap.put(deviceId, msgCnt);
+        lastMsgTimeMap.put(deviceId, currentSimTime);
+        return true;
+    }
+
+    public RoadSideAlert createRsa(long simOffsetTimeMs) {
         rsaTimeQueueManager.updateAllQueue();
         rsaTimeQueueManager.removeAllExpired();
 
         return rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).values().stream()
                 .map(TimerQueueEntry::getMessage)
-                .collect(Collectors.toList());
+                .sorted(Comparator.comparing(wrapper -> wrapper.priority(), Comparator.reverseOrder()))
+                .findFirst()
+                .map(wrapper -> new RsaBuilder(simOffsetTimeMs)
+                        .setMsgCnt(nextRsaMsgCnt())
+                        .setTypeEvent(wrapper.type())
+                        .setPriority(wrapper.priority())
+                        .setHeadingBitString(wrapper.headingBitString())
+                        .setExtent(wrapper.extent())
+                        .setPosition(wrapper.utcTime(), wrapper.lon(), wrapper.lat(), wrapper.elevation())
+                        .create())
+                .orElse(null);
     }
+
+    public boolean needSendRsa() {
+        return !rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).isEmpty() ;
+    }
+
+    /**
+     * 取得目前 RSA Queue 裡所有事件的 eventId
+     */
+    public List<String> getRsaActivityEventIds() {
+        return rsaTimeQueueManager.getTimeQueue(RSA_QUEUE)
+                .values()
+                .stream()
+                .map(entry -> entry.getMessage().eventId()) // RsaEventWrapper 的 eventId
+                .toList();
+    }
+
 
     public void addRsaRecord(RoadSideAlert rsa) { rsaSentRecords.add(rsa); }
 

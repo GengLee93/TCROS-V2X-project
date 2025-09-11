@@ -3,12 +3,11 @@ package CommonUtil.TcrosBuilder;
 import CommonClass.RsaClass.*;
 import CommonEnum.*;
 import TcrosProtocols.RoadSideAlert;
-import Util.PositionUtil;
 import Util.TimeUtil;
-import org.eclipse.mosaic.lib.geo.GeoPoint;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /*
 * timeStamp 對應封包廣播時間點(會更新)
@@ -16,7 +15,7 @@ import java.util.List;
  */
 public class RsaBuilder {
     private Integer msgCnt;
-    private final long eventStartTimeMs;
+    private final long now;
     private ITISCode typeEvent;
     private List<ITISCode> description;
     private RsaPriority priority;
@@ -31,14 +30,14 @@ public class RsaBuilder {
     private PosConfidence posConfidence;
     private SpeedConfidence speedConfidence;
 
-    public RsaBuilder(long eventStartTimeMs) {
-        this.eventStartTimeMs = eventStartTimeMs;
+    public RsaBuilder(long now) {
+        this.now = now;
         description = new ArrayList<>();
         this.position = new PositionInfo(
                 new UtcTime(0, 0, 0, 31, 60, 65535),
                 1800000001L,
                 900000001L,
-                -4096,
+                -4096L,
                 2880,
                 new SpeedInfo(TransmissionState.UNAVAILABLE, 8191),
                 new PosAccuracy(255, 255, 65525),
@@ -51,7 +50,7 @@ public class RsaBuilder {
     public RoadSideAlert create() {
         return new RoadSideAlert(
                 msgCnt,
-                TimeUtil.minuteOfYears(eventStartTimeMs),
+                TimeUtil.minuteOfYears(now),
                 typeEvent,
                 description,
                 priority,
@@ -61,8 +60,8 @@ public class RsaBuilder {
                 );
     }
 
-    public RsaBuilder setMsgCnt(int cnt) {
-        this.msgCnt = cnt;
+    public RsaBuilder setMsgCnt(int msgCnt) {
+        this.msgCnt = msgCnt;
         return this;
     }
 
@@ -87,7 +86,7 @@ public class RsaBuilder {
         return this;
     }
 
-    public RsaBuilder setHeadingBitString(String bitString){
+    public RsaBuilder setHeadingBitString(String bitString) {
         if(bitString != null && bitString.length() == 16){
             this.headingBitString = bitString;
         }
@@ -99,16 +98,14 @@ public class RsaBuilder {
         return this;
     }
 
-    public RsaBuilder SetPosition(GeoPoint geoPoint){
-        int elevation = (int) Math.round(geoPoint.getAltitude() * 10);
-        elevation = Math.max(-4096, Math.min(elevation, 61439));
-
+    public RsaBuilder setPosition(UtcTime utcTime, Long longitude, Long latitude, Long elev) {
+        Long elevation =  Math.max(-4096, Math.min(elev, 61439));
         position =  new PositionInfo(
-                TimeUtil.toUtcTime(eventStartTimeMs),
-                PositionUtil.toOneOfTenMicroDegrees(geoPoint.getLongitude()),
-                PositionUtil.toOneOfTenMicroDegrees(geoPoint.getLatitude()),
+                utcTime,
+                longitude,
+                latitude,
                 elevation,
-                headingDegrees,                  // 行駛方向（default = 0）
+                headingDegrees != null ? headingDegrees : 0,    // 行駛方向（default = 0）
                 speedInfo,
                 posAccuracy, // 橢圓精度（default = 0）
                 timeConfidence,
@@ -128,15 +125,12 @@ public class RsaBuilder {
 
     public RsaBuilder setSpeed(double speedMs, TransmissionState transmissionState) {
         Integer speed = (int) (speedMs / 0.02);
-        SpeedInfo speedInfo = new SpeedInfo(
-                transmissionState,
-                speed
-        );
+        this.speedInfo = new SpeedInfo(transmissionState, speed);
         return this;
     }
 
     public RsaBuilder setAccuracy(Integer semiMajor, Integer semiMinor, Integer orientation) {
-        PosAccuracy posAccuracy = new PosAccuracy(semiMajor, semiMinor, orientation);
+        this.posAccuracy = new PosAccuracy(semiMajor, semiMinor, orientation);
         return this;
     }
 

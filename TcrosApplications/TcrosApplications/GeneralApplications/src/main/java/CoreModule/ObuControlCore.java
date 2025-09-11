@@ -1,6 +1,7 @@
 package CoreModule;
 
 import CommonClass.DrivingRecord;
+import CommonClass.RsaClass.UtcTime;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
 import CommonEnum.*;
@@ -298,6 +299,7 @@ public class ObuControlCore {
         }else{
             return Double.NaN;
         }
+
     }
 
     public GeoPoint getCurrentPoint(){
@@ -332,7 +334,7 @@ public class ObuControlCore {
         return current;
     }
 
-    public boolean needSendEva(){ return needSendSrm();}
+    public boolean needSendEva(){ return needSendSrm(); }
 
     public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
         EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
@@ -343,7 +345,6 @@ public class ObuControlCore {
         evaBuilder.setBasicType(BasicType.special);
 
         evaBuilder.rsaBuilder
-                .setMsgCnt(nextEvaMsgCnt())
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
                 //description
                 .setPriority(RsaPriority.PRIORITY_7)
@@ -352,7 +353,7 @@ public class ObuControlCore {
 
                 //position
                 .setHeadingByDegree(heading)
-                .SetPosition(currentPoint)
+                .setPosition(new UtcTime(0, 0, 0, 0, 0, 0), 0L, 0L, 0L)
                 .setSpeed(speedRecords.get(-1), TransmissionState.UNAVAILABLE)
                 //Accuracy
                 .setConfidence(
@@ -367,5 +368,5 @@ public class ObuControlCore {
         return evaBuilder.create();
     }
 
-    public void addEvaRecord(EmergencyVehicleAlert eva){ evaRecords.add(eva);}
+    public void addEvaRecord(EmergencyVehicleAlert eva) { evaRecords.add(eva); }
 }

@@ -16,7 +16,7 @@ public record PositionInfo(
         Long lat,
 
         @Description("Elevation in decimeters (0.1 meters), -4096.61439 means no information.")
-        Integer elevation,
+        Long elevation,
 
         @Description("Heading angle in 0.0125-degree units, -360/65535 means no information.")
         Integer heading,
