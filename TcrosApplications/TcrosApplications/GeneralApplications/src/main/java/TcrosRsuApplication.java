@@ -33,7 +33,7 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     private RsuControlCore controlCore;
     private RealTimeReferencePoint timeReferencePoint;
     private GeoArea geoBoardCastArea;
-
+    private GeoPolygon geoPolygon;
     public TcrosRsuApplication(){
         super(RsuConfiguration.class,"TcrosRsuApplication");
     }
@@ -54,6 +54,7 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         Event newEvent = new Event(getOs().getSimulationTime() + EVENT_START_TIME, this);
         getOs().getEventManager().addEvent(newEvent);
     }
+
     private void initBasicAttribute(){
         controlCore = new RsuControlCore(
                 getOs().getPosition(),
@@ -69,11 +70,13 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         timeReferencePoint = RealTimeReferencePoint.getInstance();
         geoBoardCastArea = new GeoCircle(getOs().getPosition(), GEO_BOARD_CAST_RADIUS);
     }
+
     @Override
     public void processEvent(Event event) {
         getLog().infoSimTime(this,"RSU has catch event.");
         eventTarget();
     }
+
     @Override
     public void onMessageReceived(ReceivedV2xMessage receivedV2xMessage) {
         controlCore.handleMessage(receivedV2xMessage.getMessage());
@@ -90,6 +93,7 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     public void onMessageTransmitted(V2xMessageTransmission v2xMessageTransmission) {
         /*No need to implement currently*/
     }
+
     private void eventTarget(){
         Event newEvent = new Event(getOs().getSimulationTime() + UPDATE_INTERVAL, this);
         getOs().getEventManager().addEvent(newEvent);
@@ -97,6 +101,7 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         updateMessageSend();
         updateLog();
     }
+
     private void updateControlCore() {
         controlCore.updateAllState(getOs().getSimulationTime());
     }
@@ -108,12 +113,14 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         getLog().infoSimTime(this,"Granted Vehicle:{}",controlCore.getGrantedVehicleId());
         getLog().infoSimTime(this,"Passed Queue:{}", controlCore.getPassedVehicleIds());
         getLog().infoSimTime(this,"Rejected Queue:{}", controlCore.getRejectedVehicleIds());
+        getLog().infoSimTime(this, "RsaQueue: {}", controlCore.getRsaActivityEventIds());
         getLog().infoSimTime(this,"============================");
     }
 
     private void updateMessageSend(){
         broadCastSpatAndMapMessage();
         broadCastSsmToAllQueued();
+        broadCastRsa();
     }
 
     private void broadCastSpatAndMapMessage(){
@@ -146,16 +153,15 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     private void broadCastRsa() {
         if (controlCore.needSendRsa()) {
             final MessageRouting routing = createGeoBroadCastMessageRouting();
-            List<RoadSideAlert> rsaList = controlCore.getActiveRsaList();
-            for (RoadSideAlert rsa : rsaList) {
-                controlCore.addRsaRecord(rsa);
-                TcrosProtocolV2xMessage<RoadSideAlert> rsaMessage =
-                        new TcrosProtocolV2xMessage<>(routing, rsa, RoadSideAlert.class);
-                rsaMessage.setSenderId(getOs().getId());
+            RoadSideAlert ras = controlCore.createRsa(getRealMilliTimeInSimOffset());
+            controlCore.addRsaRecord(ras);
 
-                getOs().getAdHocModule().sendV2xMessage(rsaMessage);
-                getLog().infoSimTime(this, "RSA messages sent: {}" + rsa);
-            }
+            // TODO: 需依照 RSA 中的廣播範圍動態生成廣播範圍
+
+            TcrosProtocolV2xMessage<RoadSideAlert> rsaMessage = new TcrosProtocolV2xMessage<>(routing, ras, RoadSideAlert.class);
+            rsaMessage.setSenderId(getOs().getId());
+            getOs().getAdHocModule().sendV2xMessage(rsaMessage);
+            getLog().infoSimTime(this, "RSA has sent.");
         }
     }
 

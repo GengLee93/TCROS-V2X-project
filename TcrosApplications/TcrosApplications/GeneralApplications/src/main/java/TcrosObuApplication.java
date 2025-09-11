@@ -12,6 +12,7 @@ import org.eclipse.mosaic.fed.application.app.api.CommunicationApplication;
 import org.eclipse.mosaic.fed.application.app.api.VehicleApplication;
 import org.eclipse.mosaic.fed.application.app.api.os.VehicleOperatingSystem;
 import org.eclipse.mosaic.interactions.communication.V2xMessageTransmission;
+import org.eclipse.mosaic.interactions.vehicle.VehicleLaneChange;
 import org.eclipse.mosaic.lib.enums.AdHocChannel;
 import org.eclipse.mosaic.lib.geo.GeoCircle;
 import org.eclipse.mosaic.lib.objects.v2x.MessageRouting;
@@ -23,7 +24,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguration,VehicleOperatingSystem> implements VehicleApplication, CommunicationApplication {
+public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguration, VehicleOperatingSystem> implements VehicleApplication, CommunicationApplication {
     private static final int GEO_BOARD_CAST_RADIUS = 200;
     private ObuControlCore obuControlCore;
     private RealTimeReferencePoint timeReferencePoint;
@@ -34,7 +35,7 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     public void onStartup() {
         getLog().infoSimTime(this,"Vehicle has start!");
 
-        obuControlCore = new ObuControlCore(getOs().getId(),getConfiguration(),getLog().getUnitLogDirectory());
+        obuControlCore = new ObuControlCore(getOs().getId(),getConfiguration(), getLog().getUnitLogDirectory());
         timeReferencePoint = RealTimeReferencePoint.getInstance();
         getOs().getAdHocModule().enable(new AdHocModuleConfiguration()
                 .addRadio()

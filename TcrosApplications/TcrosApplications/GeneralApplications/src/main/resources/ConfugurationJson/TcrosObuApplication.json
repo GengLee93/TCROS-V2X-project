@@ -2,5 +2,6 @@
   "stopBroadcastStartTime" :0,
   "stopBroadcastEndTime" : 0,
   "errorSrmBroadcastStartTime" :0,
-  "errorSrmBroadcastEndTime" : 0
+  "errorSrmBroadcastEndTime" : 0,
+  "mass" : 0
 }

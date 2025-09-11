@@ -1,17 +1,22 @@
 {
-  "label": "A08",
-  "priorityStartTime" : 0,
-  "priorityEndTime" : 999,
+  "label": "A05",
+  "priorityStartTime": 0,
+  "priorityEndTime": 999,
   "trafficLightInfoList": [
     {
-      "id" : "tl_7",
-      "tlGroup": "1144509747",
-      "nodeId": "1144509747"
+      "id": "tl_4",
+      "tlGroup": "1140228864",
+      "nodeId": "1140228864"
     },
     {
-      "id" : "tl_20",
-      "tlGroup": "1144510002",
-      "nodeId": "1144510002"
+      "id": "tl_3",
+      "tlGroup": "1140228862",
+      "nodeId": "1140228862"
+    },
+    {
+      "id": "tl_171",
+      "tlGroup": "9383263989",
+      "nodeId": "9383263989"
     }
   ]
 }

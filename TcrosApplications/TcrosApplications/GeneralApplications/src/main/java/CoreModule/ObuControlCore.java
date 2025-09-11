@@ -1,6 +1,7 @@
 package CoreModule;
 
 import CommonClass.DrivingRecord;
+import CommonClass.RsaClass.UtcTime;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
 import CommonEnum.*;
@@ -8,6 +9,7 @@ import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.EvaBuilder;
 import CommonUtil.TcrosBuilder.SrmBuilder;
 import Configurations.ObuConfiguration;
+import Configurations.VehicleConfiguration;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
@@ -57,7 +59,7 @@ public class ObuControlCore {
     private double heading;
     private final String evaVehicleId;
 
-    public ObuControlCore(String vid, ObuConfiguration configuration,Path lPath){
+    public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
         vehicleId = Integer.parseInt(vid.substring(vid.indexOf("_")+1));
         stopBroadcastStartTime = configuration.stopBroadcastStartTime * TIME.SECOND;
@@ -297,6 +299,7 @@ public class ObuControlCore {
         }else{
             return Double.NaN;
         }
+
     }
 
     public GeoPoint getCurrentPoint(){
@@ -331,7 +334,7 @@ public class ObuControlCore {
         return current;
     }
 
-    public boolean needSendEva(){ return needSendSrm();}
+    public boolean needSendEva(){ return needSendSrm(); }
 
     public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
         EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
@@ -342,7 +345,6 @@ public class ObuControlCore {
         evaBuilder.setBasicType(BasicType.special);
 
         evaBuilder.rsaBuilder
-                .setMsgCnt(nextEvaMsgCnt())
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
                 //description
                 .setPriority(RsaPriority.PRIORITY_7)
@@ -351,7 +353,7 @@ public class ObuControlCore {
 
                 //position
                 .setHeadingByDegree(heading)
-                .SetPosition(currentPoint)
+                .setPosition(new UtcTime(0, 0, 0, 0, 0, 0), 0L, 0L, 0L)
                 .setSpeed(speedRecords.get(-1), TransmissionState.UNAVAILABLE)
                 //Accuracy
                 .setConfidence(
@@ -366,5 +368,5 @@ public class ObuControlCore {
         return evaBuilder.create();
     }
 
-    public void addEvaRecord(EmergencyVehicleAlert eva){ evaRecords.add(eva);}
+    public void addEvaRecord(EmergencyVehicleAlert eva) { evaRecords.add(eva); }
 }

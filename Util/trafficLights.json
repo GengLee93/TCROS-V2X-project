@@ -1,0 +1,160 @@
+{
+  "trafficLights": [
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "5372642442"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "631668976"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "631668981"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "631669076"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "655375573"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "2038168688"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "655375574"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "655375248"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "655375249"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "655375578"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "655375241"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "655375242"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "1140228864"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "1140228862"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "9383263989"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "9383240480"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "1140226515"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "1140226550"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "656416255"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "9383240485"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "656416093"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "656416097"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "292783107"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "9402558765"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "656416099"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "9402558764"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "9402558759"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "965533187"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "9402558758"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "965533172"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "1720485456"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "1720485436"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "1720485460"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "280389388"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "280389395"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "648173087"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "2178660139"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "631668984"
+    },
+    {
+      "name": "TrafficLight",
+      "tlGroupId": "631669073"
+    }
+  ]
+}
