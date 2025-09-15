@@ -33,7 +33,6 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     private RsuControlCore controlCore;
     private RealTimeReferencePoint timeReferencePoint;
     private GeoArea geoBoardCastArea;
-    private GeoPolygon geoPolygon;
     public TcrosRsuApplication(){
         super(RsuConfiguration.class,"TcrosRsuApplication");
     }

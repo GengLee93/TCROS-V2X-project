@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 public class ObuControlCore {
     private final int vehicleId;
@@ -41,7 +42,6 @@ public class ObuControlCore {
     private final List<Double> speedRecords;
     private final List<SignalRequestMessage> srmRecords;
     private final List<SignalStatusMessage> ssmRecords;
-    private final List<RoadSideAlert> rsaRecords;
     private final List<EmergencyVehicleAlert> evaRecords;
     private final List<DrivingRecord> drivingRecords;
     private final Path logPath;
@@ -55,7 +55,7 @@ public class ObuControlCore {
     private final List<String> routeConnections;
     private int routeLanesIndex;
     private static final int RECEIVED_TIME_OUT_LIMIT = 5;
-    private int evaMsgCnt = 0;
+    private int evaMsgCnt = new Random().nextInt(128);
     private double heading;
     private final String evaVehicleId;
 
@@ -78,7 +78,6 @@ public class ObuControlCore {
         srmRecords = new ArrayList<>();
         ssmRecords = new ArrayList<>();
         drivingRecords = new ArrayList<>();
-        rsaRecords = new ArrayList<>();
         evaRecords = new ArrayList<>();
         evaVehicleId = vid;
     }
@@ -155,7 +154,6 @@ public class ObuControlCore {
             mapTimer = TimerQueueEntry.emptyEntry();
         }
     }
-
     public INode getUpcomingNode(){return upcomingNode;}
     public INode getPreviousNode(){return previousNode;}
     public TimerQueueEntry<SPaTData> getSpatTimer(){
@@ -191,6 +189,9 @@ public class ObuControlCore {
         } else if (protocolClassName.equals(SignalStatusMessage.class.getName())) {
             handleSsm((TcrosProtocolV2xMessage<SignalStatusMessage>) message);
         }
+        else if(protocolClassName.equals(EmergencyVehicleAlert.class.getName())){
+            handleEva((TcrosProtocolV2xMessage<EmergencyVehicleAlert>) message);
+        }
     }
 
     private void handleSpatData(TcrosProtocolV2xMessage<SPaTData> message){
@@ -212,6 +213,11 @@ public class ObuControlCore {
         if(ssm.getRequestStatus(upcomingNode.getId(),vehicleId) != null){
             ssmRecords.add(ssm);
         }
+    }
+
+    private void handleEva(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
+        EmergencyVehicleAlert eva = message.getTcrosProtocol();
+
     }
 
     public SignalRequestMessage createSRM(long simOffsetTimeMs){
@@ -242,7 +248,6 @@ public class ObuControlCore {
     public void addSrmRecord(SignalRequestMessage srm){
         srmRecords.add(srm);
     }
-
     private Requests getNodePreviousRequest(String nodeId){
         if(!srmRecords.isEmpty()){
             for (int i = srmRecords.size()-1; i >=0 ; i--){
@@ -309,6 +314,8 @@ public class ObuControlCore {
     public void exportSentMessage() throws IOException {
         File outputFile = logPath.resolve("SrmRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,srmRecords);
+        outputFile = logPath.resolve("EvaRecords.json").toFile();
+        ObjectExportUtil.exportTcrosBaseMessage(outputFile, evaRecords);
     }
 
     public void exportDrivingRecords() throws IOException {
@@ -321,13 +328,14 @@ public class ObuControlCore {
                 .getParent()
                 .getFileName()
                 .toString()
-                .replace("log-","");
+                .replace("log-", "");
 
-        File outputFile = logPath.resolve(logPrefix+"_drivingRecord.csv").toFile();
+        File outputFile = logPath.resolve(logPrefix + "_drivingRecord.csv").toFile();
         try (BufferedWriter writer = Files.newBufferedWriter(outputFile.toPath(), StandardCharsets.UTF_8)) {
             mapper.writer(schema).writeValues(writer).writeAll(drivingRecords);
         }
     }
+
     private int nextEvaMsgCnt() {
         int current = evaMsgCnt;
         evaMsgCnt = (evaMsgCnt + 1) % 128;
@@ -345,6 +353,7 @@ public class ObuControlCore {
         evaBuilder.setBasicType(BasicType.special);
 
         evaBuilder.rsaBuilder
+                .setMsgCnt(nextEvaMsgCnt())
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
                 //description
                 .setPriority(RsaPriority.PRIORITY_7)
@@ -354,7 +363,7 @@ public class ObuControlCore {
                 //position
                 .setHeadingByDegree(heading)
                 .setPosition(new UtcTime(0, 0, 0, 0, 0, 0), 0L, 0L, 0L)
-                .setSpeed(speedRecords.getLast(), TransmissionState.UNAVAILABLE)
+                .setSpeed(speedRecords.get(speedRecords.size() - 1), TransmissionState.UNAVAILABLE)
                 //Accuracy
                 .setConfidence(
                         TimeConfidence.Unavailable,

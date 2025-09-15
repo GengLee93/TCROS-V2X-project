@@ -3,6 +3,7 @@ package CommonClass.EventWrapper;
 import CommonClass.RsaClass.*;
 import CommonEnum.*;
 
+import java.io.Serializable;
 import java.util.List;
 
 public record RsaEventWrapper(
@@ -13,5 +14,5 @@ public record RsaEventWrapper(
         long lat, long lon, long elevation,
         RsaPriority priority,
         String headingBitString,
-        Extent extent) { }
+        Extent extent) implements Serializable { }
 
