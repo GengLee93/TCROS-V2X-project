@@ -354,7 +354,7 @@ public class ObuControlCore {
                 //position
                 .setHeadingByDegree(heading)
                 .setPosition(new UtcTime(0, 0, 0, 0, 0, 0), 0L, 0L, 0L)
-                .setSpeed(speedRecords.get(-1), TransmissionState.UNAVAILABLE)
+                .setSpeed(speedRecords.getLast(), TransmissionState.UNAVAILABLE)
                 //Accuracy
                 .setConfidence(
                         TimeConfidence.Unavailable,
