@@ -1,5 +1,7 @@
 package CoreModule;
 
+import CommonClass.EventWrapper.RsaEventWrapper;
+import CommonClass.RsaClass.*;
 import CommonClass.SrmAssertedType;
 import CommonClass.SrmClass.Requestor;
 import CommonClass.SrmClass.Requests;
@@ -7,11 +9,7 @@ import CommonClass.SsmClass.SigStatus;
 import CommonClass.SsmClass.Status;
 import CommonClass.TimeQueueManager;
 import CommonClass.TimerQueueEntry;
-import CommonClass.EventWrapper.RsaEventWrapper;
-import CommonEnum.ITISCode;
-import CommonEnum.RequestStatus;
-import CommonEnum.RequestType;
-import CommonEnum.RsaPriority;
+import CommonEnum.*;
 import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.MapDataBuilder;
 import CommonUtil.TcrosBuilder.SpatBuilder;
@@ -575,29 +573,33 @@ public class RsuControlCore {
     }
 
     /**
-     * @param message EVA 消息n
+     * @param message EVA 消息
      * 分析緊急情況，生成相應的 RSA
      */
     private void handleEVA(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
         String eventId = "EVA_" + eva.id();
 
-        // TODO: 需要判斷 msgCnt
-        if (!isFreshMsg(eva.id(), eva.rsaMsg().msgCnt(), simTime)) {
-            return;
-        }
-
+        // TODO:  msgCnt 判斷邏輯需要更嚴謹
+        if (!isFreshMsg(eva.id(), eva.rsaMsg().msgCnt(), simTime)) { return; }
         RsaEventWrapper wrapper = new RsaEventWrapper(
                 eventId,
-                ITISCode.EMERGENCY_VEHICLE,
+                eva.rsaMsg().typeEvent(),
                 eva.rsaMsg().description(),
+                eva.rsaMsg().priority(),
+                eva.rsaMsg().heading(),
+                eva.rsaMsg().extent(),
                 eva.rsaMsg().position().utcTime(),
                 eva.rsaMsg().position().lat(),
                 eva.rsaMsg().position().lon(),
                 eva.rsaMsg().position().elevation(),
-                RsaPriority.PRIORITY_7,
-                eva.rsaMsg().heading(),
-                eva.rsaMsg().extent()
+
+                Optional.ofNullable(eva.rsaMsg().position().heading()),
+                Optional.ofNullable(eva.rsaMsg().position().speed()),
+                Optional.ofNullable(eva.rsaMsg().position().posAccuracy()),
+                Optional.ofNullable(eva.rsaMsg().position().timeConfidence()),
+                Optional.ofNullable(eva.rsaMsg().position().posConfidence()),
+                Optional.ofNullable(eva.rsaMsg().position().speedConfidence())
         );
 
         if (rsaTimeQueueManager.isKeyInQueue(RSA_QUEUE, eventId)) {
@@ -634,22 +636,116 @@ public class RsuControlCore {
         return true;
     }
 
-    public RoadSideAlert createRsa(long simOffsetTimeMs) {
-        rsaTimeQueueManager.updateAllQueue();
-        rsaTimeQueueManager.removeAllExpired();
+    /**
+     * 創建測試用的 RSA 對象，使用預定義的參數
+     *
+     * @param simOffsetTimeMs 模擬時間偏移量
+     * @return 測試用的 RoadSideAlert 對象
+     */
+    public RoadSideAlert createTestRsa(long simOffsetTimeMs) {
+        try {
+            // 創建位置信息
+            UtcTime utcTime = new UtcTime(0, 0, 0, 31, 60, 65535);
 
+            // 創建速度信息
+            TransmissionState transmissionState = TransmissionState.UNAVAILABLE;
+            double speed = 8191 * 0.02; // 轉換為 m/s
+
+            // 創建位置精度信息
+            int semiMajor = 255;
+            int semiMinor = 255;
+            int orientation = 65535;
+
+            // 創建信心水準
+            TimeConfidence timeConfidence = TimeConfidence.Unavailable;
+            PosLevel posLevel = PosLevel.UNAVAILABLE;
+            ElevationLevel elevationLevel = ElevationLevel.UNAVAILABLE;
+            HeadingConfidence headingConfidence = HeadingConfidence.UNAVAILABLE;
+            SpeedLevel speedLevel = SpeedLevel.UNAVAILABLE;
+            ThrottleConfidence throttleConfidence = ThrottleConfidence.UNAVAILABLE;
+
+            // 創建 RSA 構建器
+            RsaBuilder rsaBuilder = new RsaBuilder(simOffsetTimeMs)
+                    .setMsgCnt(1)
+                    .setTypeEvent(ITISCode.EMERGENCY_VEHICLE) // 531
+                    .addDescription(ITISCode.POLICE_ACTIVITY)  // 532
+                    .setPriority(RsaPriority.PRIORITY_4)  // "00100000"
+                    .setHeadingByDegreeString(1.0)
+                    .setExtent(Extent.useFor50meters)  // 3
+                    .setPosition(utcTime, 1800000001L, 900000001L, -4096L)
+                    .setHeadingByDegree(28800)
+                    .setSpeed(transmissionState, speed)
+                    .setAccuracy(semiMajor, semiMinor, orientation)
+                    .setConfidence(
+                            timeConfidence,
+                            posLevel,
+                            elevationLevel,
+                            headingConfidence,
+                            speedLevel,
+                            throttleConfidence
+                    );
+
+            // 創建並返回 RSA 對象
+                log.info("Successfully created test RSA object");
+                return rsaBuilder.create();
+            } catch (Exception e) {
+                log.error("Failed to create test RSA object: {}", e.getMessage(), e);
+                return null;
+            }
+    }
+
+    public RoadSideAlert createRsa(long simOffsetTimeMs) {
+//        rsaTimeQueueManager.updateAllQueue();
+//        rsaTimeQueueManager.removeAllExpired();
         return rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).values().stream()
                 .map(TimerQueueEntry::getMessage)
                 .sorted(Comparator.comparing(wrapper -> wrapper.priority(), Comparator.reverseOrder()))
                 .findFirst()
-                .map(wrapper -> new RsaBuilder(simOffsetTimeMs)
-                        .setMsgCnt(nextRsaMsgCnt())
-                        .setTypeEvent(wrapper.type())
-                        .setPriority(wrapper.priority())
-                        .setHeadingBitString(wrapper.headingBitString())
-                        .setExtent(wrapper.extent())
-                        .setPosition(wrapper.utcTime(), wrapper.lon(), wrapper.lat(), wrapper.elevation())
-                        .create())
+                .map(wrapper -> {
+                    RsaBuilder rsaBuilder = new RsaBuilder(simOffsetTimeMs)
+                            .setMsgCnt(nextRsaMsgCnt())
+                            .setTypeEvent(wrapper.typeEvent())
+                            .setPriority(wrapper.priority())
+                            .setHeadingBitString(wrapper.headingBitString())
+                            .setExtent(wrapper.extent())
+                            .setPosition(wrapper.utcTime(), wrapper.lon(), wrapper.lat(), wrapper.elevation());
+
+                    // Add descriptions if available
+                    if (wrapper.description() != null && !wrapper.description().isEmpty()) {
+                        for(ITISCode addMessage: wrapper.description()) {
+                            rsaBuilder.addDescription(addMessage);
+                        }
+                    }
+
+                    // Add optional parameters if they are present
+                    if (wrapper.posAccuracy().isPresent()) {
+                        PosAccuracy accuracy = wrapper.posAccuracy().get();
+                        rsaBuilder.setAccuracy(accuracy.semiMajor(), accuracy.semiMinor(), accuracy.orientation());
+                    }
+
+                    if (wrapper.speedInfo().isPresent()) {
+                        SpeedInfo speedInfo = wrapper.speedInfo().get();
+                        rsaBuilder.setSpeed(speedInfo.transmission(), (double)speedInfo.speed() * 0.02);
+                    }
+
+                    if (wrapper.posAccuracy().isPresent()) {
+                        PosAccuracy accuracy = wrapper.posAccuracy().get();
+                        rsaBuilder.setAccuracy(accuracy.semiMajor(), accuracy.semiMinor(), accuracy.orientation());
+                    }
+                    TimeConfidence timeConf = wrapper.timeConfidence().orElse(null);
+                    PosConfidence posConf = wrapper.posConfidence().orElse(null);
+                    SpeedConfidence speedConf = wrapper.speedConfidence().orElse(null);
+
+                    PosLevel posLevel = posConf != null ? posConf.pos() : null;
+                    ElevationLevel elevLevel = posConf != null ? posConf.elevation() : null;
+                    HeadingConfidence headingConf = speedConf != null ? speedConf.heading() : null;
+                    SpeedLevel speedLevel = speedConf != null ? speedConf.speed() : null;
+                    ThrottleConfidence throttleConf = speedConf != null ? speedConf.throttle() : null;
+
+                    rsaBuilder.setConfidence(timeConf, posLevel, elevLevel, headingConf, speedLevel, throttleConf);
+
+                    return rsaBuilder.create();
+                })
                 .orElse(null);
     }
 
@@ -668,7 +764,6 @@ public class RsuControlCore {
                 .toList();
     }
 
-
     public void addRsaRecord(RoadSideAlert rsa) { rsaSentRecords.add(rsa); }
 
     public void exportSentMessage() throws IOException {
@@ -678,8 +773,19 @@ public class RsuControlCore {
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,spatSentRecords);
         outputFile = logPath.resolve("MapDataRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,mapDataSentRecords);
-        outputFile = logPath.resolve("RsaRecords.json").toFile();
-        ObjectExportUtil.exportTcrosBaseMessage(outputFile, rsaSentRecords);
+//        outputFile = logPath.resolve("RsaRecords.json").toFile();
+//        ObjectExportUtil.exportTcrosBaseMessage(outputFile, rsaSentRecords);
+
+        // RSA 記錄的導出
+        log.info("Preparing to export RSA records, current record count: {}", rsaSentRecords.size());
+        File rsaOutputFile = logPath.resolve("RsaRecords.json").toFile();
+        try {
+            ObjectExportUtil.exportTcrosBaseMessage(rsaOutputFile, rsaSentRecords);
+            log.info("RSA records successfully exported to: {}", rsaOutputFile.getAbsolutePath());
+        } catch (Exception e) {
+            log.error("Failed to export RSA records: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     public void exportTrafficLightInfoToJson() throws IOException {

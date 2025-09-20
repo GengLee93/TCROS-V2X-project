@@ -1,7 +1,8 @@
 package CoreModule;
 
 import CommonClass.DrivingRecord;
-import CommonClass.RsaClass.UtcTime;
+import CommonClass.EvaClass.*;
+import CommonClass.RsaClass.*;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
 import CommonEnum.*;
@@ -12,6 +13,7 @@ import Configurations.ObuConfiguration;
 import Configurations.VehicleConfiguration;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
+import Util.TimeUtil;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.eclipse.mosaic.fed.application.ambassador.SimulationKernel;
@@ -56,7 +58,7 @@ public class ObuControlCore {
     private int routeLanesIndex;
     private static final int RECEIVED_TIME_OUT_LIMIT = 5;
     private int evaMsgCnt = 0;
-    private double heading;
+    private Double heading;
     private final String evaVehicleId;
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
@@ -190,6 +192,10 @@ public class ObuControlCore {
             handleMapData((TcrosProtocolV2xMessage<V2XMapData>) message);
         } else if (protocolClassName.equals(SignalStatusMessage.class.getName())) {
             handleSsm((TcrosProtocolV2xMessage<SignalStatusMessage>) message);
+        }  else if (protocolClassName.equals(EmergencyVehicleAlert.class.getName())) {
+            handleEva((TcrosProtocolV2xMessage<EmergencyVehicleAlert>) message);
+        } else if (protocolClassName.equals(RoadSideAlert.class.getName())) {
+            handleRsa((TcrosProtocolV2xMessage<RoadSideAlert>) message);
         }
     }
 
@@ -211,6 +217,20 @@ public class ObuControlCore {
         SignalStatusMessage ssm = message.getTcrosProtocol();
         if(ssm.getRequestStatus(upcomingNode.getId(),vehicleId) != null){
             ssmRecords.add(ssm);
+        }
+    }
+
+    private void handleEva(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
+        EmergencyVehicleAlert eva = message.getTcrosProtocol();
+        if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+            handleEmergencyVehicle();
+        }
+    }
+
+    private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message) {
+        RoadSideAlert rsa = message.getTcrosProtocol();
+        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+            handleEmergencyVehicle();
         }
     }
 
@@ -242,6 +262,52 @@ public class ObuControlCore {
     public void addSrmRecord(SignalRequestMessage srm){
         srmRecords.add(srm);
     }
+
+    private void handleEmergencyVehicle() {
+        // TODO: 避讓功能
+    }
+
+    private int nextEvaMsgCnt() {
+        int current = evaMsgCnt;
+        evaMsgCnt = (evaMsgCnt + 1) % 128;
+        return current;
+    }
+
+    public boolean needSendEva() {
+        return needSendSrm();
+    }
+
+    public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
+        EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
+
+        evaBuilder.setId(evaVehicleId);
+        evaBuilder.setBasicType(BasicType.special);
+        evaBuilder.rsaBuilder
+                .setMsgCnt(nextEvaMsgCnt())
+                .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
+                //description
+                .setPriority(RsaPriority.PRIORITY_7)
+                .setHeadingByDegree((int) Math.round(heading))
+                //extent = Object.extent
+                .setHeadingByDegree(heading.intValue())
+                .setPosition(TimeUtil.toUtcTime(simOffsetTimeMs), 0L, 0L, 0L)
+                .setSpeed(TransmissionState.UNAVAILABLE, speedRecords.get(speedRecords.size() - 1));
+        evaBuilder.setResponseType(ResponseType.emergency);
+        evaBuilder.setDetails(
+                new Details(
+                        SirenUse.inUse,
+                        LightUse.inUse,
+                        Multi.singleVehicle,
+                        new Events(Event.peEmergencySoundActive),
+                        ResponseType.emergency
+                )
+        );
+        evaBuilder.setMass(400);
+        evaBuilder.setBasicType(BasicType.special);
+        return evaBuilder.create();
+    }
+
+    public void addEvaRecord(EmergencyVehicleAlert eva) { evaRecords.add(eva); }
 
     private Requests getNodePreviousRequest(String nodeId){
         if(!srmRecords.isEmpty()){
@@ -288,6 +354,7 @@ public class ObuControlCore {
                 .average()
                 .orElse(0.0);
     }
+
     public double getUpcomingNodeETCms(){
         if(upcomingNode != null){
             double averageSpeed = getAverageSpeed();
@@ -299,7 +366,6 @@ public class ObuControlCore {
         }else{
             return Double.NaN;
         }
-
     }
 
     public GeoPoint getCurrentPoint(){
@@ -309,6 +375,8 @@ public class ObuControlCore {
     public void exportSentMessage() throws IOException {
         File outputFile = logPath.resolve("SrmRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,srmRecords);
+        outputFile = logPath.resolve("EvaRecords.json").toFile();
+        ObjectExportUtil.exportTcrosBaseMessage(outputFile,evaRecords);
     }
 
     public void exportDrivingRecords() throws IOException {
@@ -328,45 +396,4 @@ public class ObuControlCore {
             mapper.writer(schema).writeValues(writer).writeAll(drivingRecords);
         }
     }
-    private int nextEvaMsgCnt() {
-        int current = evaMsgCnt;
-        evaMsgCnt = (evaMsgCnt + 1) % 128;
-        return current;
-    }
-
-    public boolean needSendEva(){ return needSendSrm(); }
-
-    public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
-        EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
-
-        evaBuilder.setId(evaVehicleId);
-        evaBuilder.setResponseType(ResponseType.emergency);
-        //details
-        evaBuilder.setBasicType(BasicType.special);
-
-        evaBuilder.rsaBuilder
-                .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
-                //description
-                .setPriority(RsaPriority.PRIORITY_7)
-                .setHeadingBitString(Double.toString(heading))
-                //extent = Object.extent
-
-                //position
-                .setHeadingByDegree(heading)
-                .setPosition(new UtcTime(0, 0, 0, 0, 0, 0), 0L, 0L, 0L)
-                .setSpeed(speedRecords.get(-1), TransmissionState.UNAVAILABLE)
-                //Accuracy
-                .setConfidence(
-                        TimeConfidence.Unavailable,
-                        PosLevel.UNAVAILABLE,
-                        ElevationLevel.UNAVAILABLE,
-                        HeadingConfidence.UNAVAILABLE,
-                        SpeedLevel.UNAVAILABLE,
-                        ThrottleConfidence.UNAVAILABLE
-                );
-
-        return evaBuilder.create();
-    }
-
-    public void addEvaRecord(EmergencyVehicleAlert eva) { evaRecords.add(eva); }
 }

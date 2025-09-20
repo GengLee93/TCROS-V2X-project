@@ -58,6 +58,7 @@ public class EvaBuilder {
                 basicTypes
         );
     }
+
     public EvaBuilder(long nowMs) {
         this.timeStamp = (int)nowMs;
         this.mass = 255;
@@ -71,6 +72,7 @@ public class EvaBuilder {
                 ResponseType.notInUseOrNotEquipped);
         this.basicTypes = BasicType.none;
     }
+
     public EvaBuilder setId(String id){
         this.id = id;
         return this;

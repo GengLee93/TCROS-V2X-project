@@ -57,12 +57,10 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     }
 
     private void updateMessageSend(){
-        if (obuControlCore.needSendSrm()) {
-            sendSrm();
-        }
-        if (obuControlCore.needSendEva()) {
-            sendEva();
-        }
+        if (obuControlCore.needSendSrm()) { sendSrm(); }
+
+        // TODO: 判斷是否為救護車邏輯重寫
+        if (getOs().getVehicleData().getName().equals("veh_11")) { sendEva(); }
     }
     private void updateLog(VehicleData newVehicleData){
         getLog().infoSimTime(this,"==================");
@@ -76,6 +74,7 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
                 obuControlCore.getSpatTimer().isEmpty() ? "null" : obuControlCore.getSpatTimer().getTimer(),
                 obuControlCore.getMapTimer().isEmpty() ? "null" : obuControlCore.getMapTimer().getTimer()
         );
+        getLog().infoSimTime(this, "Vehicle name:{}", newVehicleData.getName());
         getLog().infoSimTime(this,"Previous Node:{}",obuControlCore.getPreviousNode() == null ? "null" : obuControlCore.getPreviousNode() .getId());
         getLog().infoSimTime(this,"RouteId:{}" , newVehicleData.getRouteId());
         getLog().infoSimTime(this,"==================");
@@ -93,10 +92,6 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         getLog().infoSimTime(this, "Send SRM,Request junction.{}",obuControlCore.getUpcomingNode().getId());
     }
 
-    private long getRealMilliTimeInSimOffset(){
-        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
-    }
-
     private void sendEva(){
         final MessageRouting routing = getOperatingSystem()
                 .getAdHocModule()
@@ -107,7 +102,13 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         TcrosProtocolV2xMessage<EmergencyVehicleAlert> sendMessage =  new TcrosProtocolV2xMessage<>(routing,eva,EmergencyVehicleAlert.class);
         sendMessage.setSenderId(getOs().getId());
         getOs().getAdHocModule().sendV2xMessage(sendMessage);
-        getLog().infoSimTime(this, "Send EVA,info junction.{}",obuControlCore.getUpcomingNode().getId());
+        getLog().infoSimTime(this, "Send EVA,info junction.{}",
+                obuControlCore.getUpcomingNode() != null ?
+                        obuControlCore.getUpcomingNode().getId() : "null");
+    }
+
+    private long getRealMilliTimeInSimOffset() {
+        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
     }
 
     @Override
