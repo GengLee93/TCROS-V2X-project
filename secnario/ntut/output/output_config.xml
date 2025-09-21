@@ -26,7 +26,7 @@
                     <entry>Mapping.VehicleType.Name</entry>
                 </entries>
             </subscription>
-            <subscription id="TrafficLightRegistration">
+            <!-- <subscription id="TrafficLightRegistration">
                 <entries>
                     <entry>"TRAFFICLIGHT_REGISTRATION"</entry>
                     <entry>Time</entry>
@@ -35,7 +35,7 @@
                     <entry>TrafficLightGroup.FirstPosition.Latitude</entry>
                     <entry>TrafficLightGroup.FirstPosition.Longitude</entry>
                 </entries>
-            </subscription>
+            </subscription> -->
         </subscriptions>
         
     </output>
@@ -49,7 +49,7 @@
             <subscription id="V2xMessageTransmission" enabled="true"/>
             <subscription id="VehicleRegistration" enabled="true"/>
             <subscription id="RsuRegistration" enabled="true"/>
-            <subscription id="TrafficLightRegistration" enabled="true"/>
+            <!-- <subscription id="TrafficLightRegistration" enabled="true"/> -->
         </subscriptions>
     </output>
 </configuration>

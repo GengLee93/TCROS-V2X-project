@@ -33,7 +33,6 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     private RsuControlCore controlCore;
     private RealTimeReferencePoint timeReferencePoint;
     private GeoArea geoBoardCastArea;
-    private GeoPolygon geoPolygon;
     public TcrosRsuApplication(){
         super(RsuConfiguration.class,"TcrosRsuApplication");
     }
@@ -80,18 +79,6 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     @Override
     public void onMessageReceived(ReceivedV2xMessage receivedV2xMessage) {
         controlCore.handleMessage(receivedV2xMessage.getMessage());
-
-        // 2. 安全檢查訊息是否為 TcrosProtocolV2xMessage 類型
-        if (receivedV2xMessage.getMessage() instanceof TcrosProtocolV2xMessage) {
-            TcrosProtocolV2xMessage<?> tcrosMsg = (TcrosProtocolV2xMessage<?>) receivedV2xMessage.getMessage();
-
-            // 3. 檢查協議類型是否為 EmergencyVehicleAlert
-            if (tcrosMsg.getTcrosProtocol() instanceof EmergencyVehicleAlert) {
-                EmergencyVehicleAlert eva = (EmergencyVehicleAlert) tcrosMsg.getTcrosProtocol();
-                getLog().infoSimTime(this, "收到 EVA 訊息! ID=[{}], 優先級=[{}], 事件類型=[{}]",
-                        eva.id(), eva.rsaMsg().priority(), eva.responseType());
-            }
-        }
     }
     @Override
     public void onAcknowledgementReceived(ReceivedAcknowledgement receivedAcknowledgement) {
@@ -166,7 +153,6 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         if (controlCore.needSendRsa()) {
             final MessageRouting routing = createGeoBroadCastMessageRouting();
             RoadSideAlert rsa = controlCore.createRsa(getRealMilliTimeInSimOffset());
-//            RoadSideAlert rsa = controlCore.createTestRsa(getRealMilliTimeInSimOffset());
             if (rsa == null) { return; }
             controlCore.addRsaRecord(rsa);
             TcrosProtocolV2xMessage<RoadSideAlert> rsaMessage = new TcrosProtocolV2xMessage<>(routing, rsa, RoadSideAlert.class);

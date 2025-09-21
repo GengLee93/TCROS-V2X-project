@@ -636,67 +636,7 @@ public class RsuControlCore {
         return true;
     }
 
-    /**
-     * 創建測試用的 RSA 對象，使用預定義的參數
-     *
-     * @param simOffsetTimeMs 模擬時間偏移量
-     * @return 測試用的 RoadSideAlert 對象
-     */
-    public RoadSideAlert createTestRsa(long simOffsetTimeMs) {
-        try {
-            // 創建位置信息
-            UtcTime utcTime = new UtcTime(0, 0, 0, 31, 60, 65535);
-
-            // 創建速度信息
-            TransmissionState transmissionState = TransmissionState.UNAVAILABLE;
-            double speed = 8191 * 0.02; // 轉換為 m/s
-
-            // 創建位置精度信息
-            int semiMajor = 255;
-            int semiMinor = 255;
-            int orientation = 65535;
-
-            // 創建信心水準
-            TimeConfidence timeConfidence = TimeConfidence.Unavailable;
-            PosLevel posLevel = PosLevel.UNAVAILABLE;
-            ElevationLevel elevationLevel = ElevationLevel.UNAVAILABLE;
-            HeadingConfidence headingConfidence = HeadingConfidence.UNAVAILABLE;
-            SpeedLevel speedLevel = SpeedLevel.UNAVAILABLE;
-            ThrottleConfidence throttleConfidence = ThrottleConfidence.UNAVAILABLE;
-
-            // 創建 RSA 構建器
-            RsaBuilder rsaBuilder = new RsaBuilder(simOffsetTimeMs)
-                    .setMsgCnt(1)
-                    .setTypeEvent(ITISCode.EMERGENCY_VEHICLE) // 531
-                    .addDescription(ITISCode.POLICE_ACTIVITY)  // 532
-                    .setPriority(RsaPriority.PRIORITY_4)  // "00100000"
-                    .setHeadingByDegreeString(1.0)
-                    .setExtent(Extent.useFor50meters)  // 3
-                    .setPosition(utcTime, 1800000001L, 900000001L, -4096L)
-                    .setHeadingByDegree(28800)
-                    .setSpeed(transmissionState, speed)
-                    .setAccuracy(semiMajor, semiMinor, orientation)
-                    .setConfidence(
-                            timeConfidence,
-                            posLevel,
-                            elevationLevel,
-                            headingConfidence,
-                            speedLevel,
-                            throttleConfidence
-                    );
-
-            // 創建並返回 RSA 對象
-                log.info("Successfully created test RSA object");
-                return rsaBuilder.create();
-            } catch (Exception e) {
-                log.error("Failed to create test RSA object: {}", e.getMessage(), e);
-                return null;
-            }
-    }
-
     public RoadSideAlert createRsa(long simOffsetTimeMs) {
-//        rsaTimeQueueManager.updateAllQueue();
-//        rsaTimeQueueManager.removeAllExpired();
         return rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).values().stream()
                 .map(TimerQueueEntry::getMessage)
                 .sorted(Comparator.comparing(wrapper -> wrapper.priority(), Comparator.reverseOrder()))
@@ -707,8 +647,7 @@ public class RsuControlCore {
                             .setTypeEvent(wrapper.typeEvent())
                             .setPriority(wrapper.priority())
                             .setHeadingBitString(wrapper.headingBitString())
-                            .setExtent(wrapper.extent())
-                            .setPosition(wrapper.utcTime(), wrapper.lon(), wrapper.lat(), wrapper.elevation());
+                            .setExtent(wrapper.extent());
 
                     // Add descriptions if available
                     if (wrapper.description() != null && !wrapper.description().isEmpty()) {
@@ -718,14 +657,20 @@ public class RsuControlCore {
                     }
 
                     // Add optional parameters if they are present
-                    if (wrapper.posAccuracy().isPresent()) {
-                        PosAccuracy accuracy = wrapper.posAccuracy().get();
-                        rsaBuilder.setAccuracy(accuracy.semiMajor(), accuracy.semiMinor(), accuracy.orientation());
+                    if (wrapper.headingDegree().isPresent()) {
+                        rsaBuilder.setHeadingDegree(wrapper.headingDegree().get());
                     }
+
+                    rsaBuilder.setPosition(wrapper.utcTime(), wrapper.lon(), wrapper.lat(), wrapper.elevation());
 
                     if (wrapper.speedInfo().isPresent()) {
                         SpeedInfo speedInfo = wrapper.speedInfo().get();
                         rsaBuilder.setSpeed(speedInfo.transmission(), (double)speedInfo.speed() * 0.02);
+                    }
+
+                    if (wrapper.posAccuracy().isPresent()) {
+                        PosAccuracy accuracy = wrapper.posAccuracy().get();
+                        rsaBuilder.setAccuracy(accuracy.semiMajor(), accuracy.semiMinor(), accuracy.orientation());
                     }
 
                     if (wrapper.posAccuracy().isPresent()) {
@@ -773,19 +718,8 @@ public class RsuControlCore {
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,spatSentRecords);
         outputFile = logPath.resolve("MapDataRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,mapDataSentRecords);
-//        outputFile = logPath.resolve("RsaRecords.json").toFile();
-//        ObjectExportUtil.exportTcrosBaseMessage(outputFile, rsaSentRecords);
-
-        // RSA 記錄的導出
-        log.info("Preparing to export RSA records, current record count: {}", rsaSentRecords.size());
-        File rsaOutputFile = logPath.resolve("RsaRecords.json").toFile();
-        try {
-            ObjectExportUtil.exportTcrosBaseMessage(rsaOutputFile, rsaSentRecords);
-            log.info("RSA records successfully exported to: {}", rsaOutputFile.getAbsolutePath());
-        } catch (Exception e) {
-            log.error("Failed to export RSA records: {}", e.getMessage(), e);
-            throw e;
-        }
+        outputFile = logPath.resolve("RsaRecords.json").toFile();
+        ObjectExportUtil.exportTcrosBaseMessage(outputFile, rsaSentRecords);
     }
 
     public void exportTrafficLightInfoToJson() throws IOException {

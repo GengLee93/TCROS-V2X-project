@@ -2,7 +2,6 @@ package CoreModule;
 
 import CommonClass.DrivingRecord;
 import CommonClass.EvaClass.*;
-import CommonClass.RsaClass.*;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
 import CommonEnum.*;
@@ -10,7 +9,6 @@ import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.EvaBuilder;
 import CommonUtil.TcrosBuilder.SrmBuilder;
 import Configurations.ObuConfiguration;
-import Configurations.VehicleConfiguration;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
 import Util.TimeUtil;
@@ -23,6 +21,8 @@ import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleRoute;
 import org.eclipse.mosaic.rti.TIME;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class ObuControlCore {
+    private static final Logger log = LoggerFactory.getLogger(ObuControlCore.class);
     private final int vehicleId;
     private final Long stopBroadcastStartTime;
     private final Long stopBroadcastEndTime;
@@ -287,9 +288,8 @@ public class ObuControlCore {
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
                 //description
                 .setPriority(RsaPriority.PRIORITY_7)
-                .setHeadingByDegree((int) Math.round(heading))
                 //extent = Object.extent
-                .setHeadingByDegree(heading.intValue())
+                .setHeadingDegree(heading)
                 .setPosition(TimeUtil.toUtcTime(simOffsetTimeMs), 0L, 0L, 0L)
                 .setSpeed(TransmissionState.UNAVAILABLE, speedRecords.get(speedRecords.size() - 1));
         evaBuilder.setResponseType(ResponseType.emergency);

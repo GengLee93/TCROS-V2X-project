@@ -107,7 +107,7 @@ public class RsaBuilder {
      * @param headingDegree 航向角度（0-360度）
      * @return RsaBuilder 实例
      */
-    public RsaBuilder setHeadingByDegreeString(Double headingDegree) {
+    public RsaBuilder setHeadingBitString(Double headingDegree) {
         if (headingDegree != null) {
             // 将角度标准化到 0-360 范围内
             double normalizedDegree = headingDegree % 360;
@@ -121,10 +121,8 @@ public class RsaBuilder {
             bitString.setCharAt(sector, '1');
 
             this.headingBitString = bitString.toString();
-            this.headingDegrees = (int) normalizedDegree; // 更新 headingDegrees 字段
         } else {
             this.headingBitString = "0000000000000000";
-            this.headingDegrees = 0;
         }
         return this;
     }
@@ -138,10 +136,10 @@ public class RsaBuilder {
         Long elevation =  Math.max(-4096, Math.min(elev, 61439));
         this.position = new PositionInfo(
                 utcTime != null ? utcTime : new UtcTime(0, 0, 0, 31, 60, 65535),
-                longitude != null ? longitude : 0L,
-                latitude != null ? latitude : 0L,
+                longitude != null ? longitude : 1800000001L,
+                latitude != null ? latitude : 900000001L,
                 elevation,
-                headingDegrees != null ? headingDegrees : 0,
+                headingDegrees != null ? headingDegrees : 28800,
                 speedInfo != null ? speedInfo : new SpeedInfo(TransmissionState.UNAVAILABLE, 8191),
                 posAccuracy != null ? posAccuracy : new PosAccuracy(255, 255, 65525),
                 timeConfidence != null ? timeConfidence : TimeConfidence.Unavailable,
@@ -152,14 +150,20 @@ public class RsaBuilder {
         return this;
     }
 
-    public RsaBuilder setHeadingByDegree(Integer degree) {
-        if (degree != null && degree >= 0 && degree <= 28800) {
-            int sector = (int) ((degree * 0.0125) / 22.5) % 16; // 將 heading 轉換為 16 向量之一
-            StringBuilder sb = new StringBuilder("0000000000000000");
-            sb.setCharAt(sector, '1');
-            this.headingDegrees = degree;
+    public RsaBuilder setHeadingDegree(Double degree) {
+        if (degree != null && degree >= 0 && degree <= 360) {
+            this.headingDegrees = (int) (degree * 80);
         } else {
-            this.headingDegrees = 0;
+            this.headingDegrees = 28800;
+        }
+        return this;
+    }
+
+    public RsaBuilder setHeadingDegree(Integer headingDegrees) {
+        if (headingDegrees != null && headingDegrees >= 0 && headingDegrees <= 28800) {
+            this.headingDegrees = headingDegrees;
+        } else {
+            this.headingDegrees = 28800;
         }
         return this;
     }
