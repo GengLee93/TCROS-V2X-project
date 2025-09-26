@@ -46,6 +46,8 @@ public class EvaBuilder {
 
 
 
+
+
     public EmergencyVehicleAlert create(){
         rsaMsgs = rsaBuilder.create();
         return new EmergencyVehicleAlert(
@@ -96,6 +98,16 @@ public class EvaBuilder {
 
     public EvaBuilder setBasicType(BasicType basicType) {
         this.basicTypes = basicType;
+        return this;
+    }
+
+    public EvaBuilder setSenderConnectionId(String connId) {
+        this.rsaBuilder.setSenderConnectionId(connId);
+        return this;
+    }
+
+    public EvaBuilder setSenderLaneIndex(Integer laneIdx) {
+        this.rsaBuilder.setSenderLaneIndex(laneIdx);
         return this;
     }
 }

@@ -30,6 +30,9 @@ public class RsaBuilder {
     private PosConfidence posConfidence;
     private SpeedConfidence speedConfidence;
 
+    private String senderConnectionId;
+    private Integer senderLaneIndex;
+
     public RsaBuilder(long now) {
         this.now = now;
         description = new ArrayList<>();
@@ -199,6 +202,16 @@ public class RsaBuilder {
                 speedC != null ? speedC : SpeedLevel.UNAVAILABLE,
                 throttleC != null ? throttleC : ThrottleConfidence.UNAVAILABLE
         );
+        return this;
+    }
+
+
+    public RsaBuilder setSenderConnectionId(String connId) {
+        this.senderConnectionId = connId;
+        return this;
+    }
+    public RsaBuilder setSenderLaneIndex(Integer laneIdx) {
+        this.senderLaneIndex = laneIdx;
         return this;
     }
 }

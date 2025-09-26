@@ -60,6 +60,12 @@ public class ObuControlCore {
     private int evaMsgCnt = 0;
     private Double heading;
     private final String evaVehicleId;
+    //給切換的預設值
+    private Integer pendingLaneChangeDelta = null; // -1=向右, +1=向左
+    private Integer currentLaneIndex = null;
+    private String  currentConnectionId = null;
+
+
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
@@ -85,24 +91,25 @@ public class ObuControlCore {
         evaVehicleId = vid;
     }
 
-    public void updateVehicleData(@NotNull VehicleData newVehicleData,Long sTime) {
+    public void updateVehicleData(@NotNull VehicleData vd, Long sTime) {
         simTime = sTime;
-        speedRecords.add(newVehicleData.getSpeed());
-        currentPoint = newVehicleData.getPosition();
-        INode nextNode = newVehicleData.getRoadPosition().getConnection().getEndNode();
-        if(!Objects.equals(upcomingNode, nextNode)){
-            if(upcomingNode != null) {
-                drivingRecords.add(
-                    new DrivingRecord(upcomingNode.getId(), sTime / TIME.SECOND)
-                );
+        speedRecords.add(vd.getSpeed());
+        currentPoint = vd.getPosition();
+        INode nextNode = vd.getRoadPosition().getConnection().getEndNode();
+        if (!Objects.equals(upcomingNode, nextNode)) {
+            if (upcomingNode != null) {
+                drivingRecords.add(new DrivingRecord(upcomingNode.getId(), sTime / TIME.SECOND));
             }
             updateUpcomingNode(nextNode);
-        }else{
+        } else {
             mapTimer.updateTimer();
             spatTimer.updateTimer();
         }
-        updateRouteInfo(newVehicleData);
-        heading = newVehicleData.getHeading();
+        updateRouteInfo(vd);
+        heading = vd.getHeading();
+
+        currentLaneIndex    = vd.getRoadPosition().getLaneIndex();
+        currentConnectionId = vd.getRoadPosition().getConnectionId();
     }
 
     private void updateRouteInfo(@NotNull VehicleData vehicleData){
@@ -264,7 +271,17 @@ public class ObuControlCore {
     }
 
     private void handleEmergencyVehicle() {
-        // TODO: 避讓功能
+        // --- 極簡條件：有路線資訊、目前/下一條 lane 取得到 ---
+        String cur = getCurrentLane();
+        String next = getNextLane(); // 代表前方 connection 可能換到另一個 lane
+        if (cur == null) return;
+
+        if (next != null && !next.equals(cur)) {
+            requestLaneChange(+1);
+            return;
+        }
+
+        requestLaneChange(+1);
     }
 
     private int nextEvaMsgCnt() {
@@ -280,32 +297,42 @@ public class ObuControlCore {
     public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
         EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
 
+        // 安全取值
+        int hdg = (heading == null) ? 0 : (int)Math.round(heading);
+        double lastSpeed = speedRecords.isEmpty() ? 0.0 : speedRecords.get(speedRecords.size()-1);
+
         evaBuilder.setId(evaVehicleId);
         evaBuilder.setBasicType(BasicType.special);
+
         evaBuilder.rsaBuilder
                 .setMsgCnt(nextEvaMsgCnt())
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
-                //description
                 .setPriority(RsaPriority.PRIORITY_7)
-                .setHeadingByDegree((int) Math.round(heading))
-                //extent = Object.extent
-                .setHeadingByDegree(heading.intValue())
-                .setPosition(TimeUtil.toUtcTime(simOffsetTimeMs), 0L, 0L, 0L)
-                .setSpeed(TransmissionState.UNAVAILABLE, speedRecords.get(speedRecords.size() - 1));
+                .setHeadingByDegree(hdg)
+                .setPosition(
+                        TimeUtil.toUtcTime(simOffsetTimeMs),
+                        (long)Math.round(currentPoint.getLongitude() * 1e7), // lonE7
+                        (long)Math.round(currentPoint.getLatitude()  * 1e7), // latE7
+                        (long)Math.round(currentPoint.getAltitude()  * 10)   // 0.1m
+                )
+                .setSpeed(TransmissionState.UNAVAILABLE, lastSpeed)
+                //   新增：把 sender 的所在連結/車道放進去
+                .setSenderConnectionId(currentConnectionId)
+                .setSenderLaneIndex(currentLaneIndex);
+
         evaBuilder.setResponseType(ResponseType.emergency);
         evaBuilder.setDetails(
                 new Details(
-                        SirenUse.inUse,
-                        LightUse.inUse,
-                        Multi.singleVehicle,
+                        SirenUse.inUse, LightUse.inUse, Multi.singleVehicle,
                         new Events(Event.peEmergencySoundActive),
                         ResponseType.emergency
                 )
         );
         evaBuilder.setMass(400);
-        evaBuilder.setBasicType(BasicType.special);
+
         return evaBuilder.create();
     }
+
 
     public void addEvaRecord(EmergencyVehicleAlert eva) { evaRecords.add(eva); }
 
@@ -396,4 +423,18 @@ public class ObuControlCore {
             mapper.writer(schema).writeValues(writer).writeAll(drivingRecords);
         }
     }
+
+    //避讓
+    public boolean hasPendingLaneChange() { return pendingLaneChangeDelta != null; }
+
+    public int consumeLaneChangeDelta() {
+        int d = pendingLaneChangeDelta;
+        pendingLaneChangeDelta = null;
+        return d;
+    }
+
+    private void requestLaneChange(int delta) { pendingLaneChangeDelta = delta; }
+
+
+
 }
