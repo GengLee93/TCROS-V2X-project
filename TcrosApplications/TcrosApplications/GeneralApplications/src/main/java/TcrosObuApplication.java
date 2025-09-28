@@ -61,58 +61,63 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         obuControlCore.updateVehicleData(vehicleData1, getOs().getSimulationTime());
         updateMessageSend();
 
-        //下換道指令
-        if (obuControlCore.hasPendingLaneChange()) {
+        // 換道
+        if (lastChangeTarget == null && obuControlCore.hasPendingLaneChange()) {
             int delta = obuControlCore.consumeLaneChangeDelta();
             tryLaneChange(delta);
         }
 
-        //驗證換道
+        // 讀取當前 lane跟connection
         var rp = getOs().getVehicleData().getRoadPosition();
-        int curLane = rp.getLaneIndex();
+        int curLane   = rp.getLaneIndex();
         String curConn = rp.getConnectionId();
 
         if (lastLaneIdx != null && curLane != lastLaneIdx) {
-            getLog().infoSimTime(this, "Avoidance: lane changed {} -> {} (detected by diff).",
-                    lastLaneIdx, curLane);
+            getLog().infoSimTime(this, "Avoidance[DIFF ]: prev={} -> now={} (conn={})", lastLaneIdx, curLane, curConn);
         }
         lastLaneIdx = curLane;
 
-        if (lastChangeTarget == null || lastChangeWhen == null) {
-            getLog().infoSimTime(this, "Avoidance: no pending verification at this tick.");
-        } else {
-            long now = getOs().getSimulationTime();
+        if (lastChangeTarget != null && lastChangeWhen != null) {
+            long now     = getOs().getSimulationTime();
             long elapsed = now - lastChangeWhen;
-            String elapStr = String.format(java.util.Locale.ROOT, "%.3f", elapsed / (double) TIME.SECOND);
 
-            getLog().infoSimTime(this,
-                    "Avoidance: verify tick (cur={}, target={}, conn={}, storedConn={}, elapsed={}s)",
-                    curLane, lastChangeTarget, curConn, lastChangeConnId, elapStr);
-
-            // connection 改變 → 中止本次驗證
-            if (lastChangeConnId != null && !lastChangeConnId.equals(curConn)) {
+            if (now < lastChangeWhen) {
+                getLog().infoSimTime(this, "Avoidance: pending (waiting for scheduled when)");
+            } else {
+                String elapStr = String.format(java.util.Locale.ROOT, "%.3f", elapsed / (double) TIME.SECOND);
                 getLog().infoSimTime(this,
-                        "Avoidance: ABORT verification (connection changed {} -> {}).",
-                        lastChangeConnId, curConn);
-                lastChangeTarget = null;
-                lastChangeWhen = null;
-                lastChangeConnId = null;
-            } else if (elapsed >= (long)(2.0 * TIME.SECOND)) {
-                if (curLane == lastChangeTarget) {
+                        "Avoidance[VERIFY]: cur={}, target={}, conn={}, storedConn={}, elapsed={}s",
+                        curLane, lastChangeTarget, curConn, lastChangeConnId, elapStr);
+
+                // connection 改變
+                if (lastChangeConnId != null && !lastChangeConnId.equals(curConn)) {
+                    getLog().infoSimTime(this,
+                            "Avoidance: ABORT verification (connection changed {} -> {}).",
+                            lastChangeConnId, curConn);
+                    lastChangeTarget = null;
+                    lastChangeWhen   = null;
+                    lastChangeConnId = null;
+
+                    // SUCCESS
+                } else if (curLane == lastChangeTarget) {
                     getLog().infoSimTime(this, "Avoidance: SUCCESS, lane==target ({})", curLane);
                     lastChangeTarget = null;
-                    lastChangeWhen = null;
+                    lastChangeWhen   = null;
                     lastChangeConnId = null;
-                } else if (elapsed > (long)(5.0 * TIME.SECOND)) {
+
+                    // TIMEOUT
+                } else if (elapsed >= (long)(5.0 * TIME.SECOND)) {
                     getLog().infoSimTime(this,
                             "Avoidance: TIMEOUT, still not at target (cur={}, expected={}, conn={})",
                             curLane, lastChangeTarget, curConn);
                     lastChangeTarget = null;
-                    lastChangeWhen = null;
+                    lastChangeWhen   = null;
                     lastChangeConnId = null;
+
+                    // 等待中
                 } else {
                     getLog().infoSimTime(this,
-                            "Avoidance: still NOT at target (cur={}, expected={}, elapsed={}s, conn={})",
+                            "Avoidance: waiting (cur={}, expected={}, elapsed={}s, conn={})",
                             curLane, lastChangeTarget, elapStr, curConn);
                 }
             }
@@ -120,8 +125,13 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         updateLog(vehicleData1);
     }
 
+
     //避讓
     private void tryLaneChange(int delta) {
+        if (lastChangeTarget != null){
+            getLog().infoSimTime(this, "Avoidance: skip try (verification in progress, target={})", lastChangeTarget);
+            return;
+        }
         var rp = getOs().getVehicleData().getRoadPosition();
         int lanes = rp.getConnection().getLanes();
         int cur   = rp.getLaneIndex();
@@ -156,7 +166,8 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
             }
         }
 
-        long when = getOs().getSimulationTime();
+        long now = getOs().getSimulationTime();
+        long when = now + (long)(0.1 * TIME.SECOND); // 推遲 0.1s，避免同 tick 排序競賽
         String whenStr = String.format(java.util.Locale.ROOT, "%.3f", when / (double) TIME.SECOND);
         getLog().infoSimTime(this,
                 "Avoidance: tryLaneChange enter, conn={}, cur={}, delta={}, target={}, lanes={}, when={}s",

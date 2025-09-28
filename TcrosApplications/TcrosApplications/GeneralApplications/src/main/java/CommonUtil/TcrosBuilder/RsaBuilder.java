@@ -59,8 +59,10 @@ public class RsaBuilder {
                 priority,
                 headingBitString,
                 extent,
-                position
-                );
+                position,
+                senderConnectionId,   // ★ 帶入
+                senderLaneIndex
+        );
     }
 
     public RsaBuilder setMsgCnt(int msgCnt) {
