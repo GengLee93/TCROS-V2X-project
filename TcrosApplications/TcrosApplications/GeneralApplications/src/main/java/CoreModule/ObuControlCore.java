@@ -17,6 +17,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.eclipse.mosaic.fed.application.ambassador.SimulationKernel;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
 import org.eclipse.mosaic.lib.objects.road.INode;
+import org.eclipse.mosaic.lib.objects.road.IRoadPosition;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleRoute;
 import org.eclipse.mosaic.rti.TIME;
@@ -30,37 +31,55 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class ObuControlCore {
     private static final Logger log = LoggerFactory.getLogger(ObuControlCore.class);
-    private final int vehicleId;
-    private final Long stopBroadcastStartTime;
-    private final Long stopBroadcastEndTime;
-    private final Long errorSrmBroadcastStartTime;
-    private final Long errorSrmBroadcastEndTime;
-    private final List<Double> speedRecords;
-    private final List<SignalRequestMessage> srmRecords;
-    private final List<SignalStatusMessage> ssmRecords;
-    private final List<RoadSideAlert> rsaRecords;
-    private final List<EmergencyVehicleAlert> evaRecords;
-    private final List<DrivingRecord> drivingRecords;
-    private final Path logPath;
-    private Long simTime;
-    private GeoPoint currentPoint;
-    private TimerQueueEntry<SPaTData> spatTimer;
-    private TimerQueueEntry<V2XMapData> mapTimer;
-    private INode upcomingNode;
-    private INode previousNode;
-    private VehicleRoute vehicleRoute;
-    private final List<String> routeConnections;
-    private int routeLanesIndex;
-    private static final int RECEIVED_TIME_OUT_LIMIT = 5;
-    private int evaMsgCnt = 0;
-    private Double heading;
-    private final String evaVehicleId;
+    private final Path logPath;                    // 日誌儲存路徑
+
+    // ==================== 車輛識別與狀態 ====================
+    private final int vehicleId;                   // 車輛唯一識別碼
+    private Double heading;                        // 車輛行進方向（角度）
+    private final String evaVehicleId;             // 緊急車輛識別碼（若為EVA）
+
+    // ==================== 全局模擬時間位置 ===================
+    private Long simTime;                          // 模擬時間戳
+    private GeoPoint currentPoint;                 // 當前地理位置
+
+    // ==================== 廣播控制時間 ====================
+    private final Long stopBroadcastStartTime;     // 停止廣播起始時間
+    private final Long stopBroadcastEndTime;       // 停止廣播結束時間
+    private final Long errorSrmBroadcastStartTime; // 錯誤 SRM 廣播起始時間
+    private final Long errorSrmBroadcastEndTime;   // 錯誤 SRM 廣播結束時間
+
+    // ==================== 車輛行駛紀錄 ====================
+    private final List<Double> speedRecords;       // 速度紀錄
+    private final List<DrivingRecord> drivingRecords; // 駕駛行為紀錄
+
+    // ==================== V2X 訊息紀錄 ====================
+    private final List<SignalRequestMessage> srmRecords; // SRM 訊息紀錄
+    private final List<SignalStatusMessage> ssmRecords;  // SSM 訊息紀錄
+    private final List<EmergencyVehicleAlert> evaRecords;// EVA 訊息紀錄
+
+    // ==================== 計時器模組 ====================
+    private TimerQueueEntry<SPaTData> spatTimer;         // SPaT 訊息計時器
+    private TimerQueueEntry<V2XMapData> mapTimer;        // MAP 訊息計時器
+
+    // ==================== 路線與節點資訊 ====================
+    private INode upcomingNode;                   // 即將抵達的節點
+    private INode previousNode;                   // 剛通過的節點
+    private VehicleRoute vehicleRoute;            // 車輛路線資訊
+    private final List<String> routeConnections;  // 路線連接資訊
+    private int routeLanesIndex;                  // 當前車道索引
+
+    // ==================== 模擬常數 ====================
+    private static final int RECEIVED_TIME_OUT_LIMIT = 5; // 接收超時限制（秒）
+    private int evaMsgCnt = 0;                    // EVA::MsgCnt
+
+    // ==================== 避讓動作狀態 ====================
+    private final Set<String> yieldedToEvIds = new HashSet<>();
+    public enum YieldAction { CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, NONE }
+    private YieldAction lastYieldAction = YieldAction.NONE; // 上一次執行的避讓動作
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
@@ -81,7 +100,6 @@ public class ObuControlCore {
         srmRecords = new ArrayList<>();
         ssmRecords = new ArrayList<>();
         drivingRecords = new ArrayList<>();
-        rsaRecords = new ArrayList<>();
         evaRecords = new ArrayList<>();
         evaVehicleId = vid;
     }
@@ -223,15 +241,66 @@ public class ObuControlCore {
 
     private void handleEva(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
-        if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
-            handleEmergencyVehicle();
+        if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE
+                && eva.details().responseType() == ResponseType.emergency) {
+            GeoPoint evPosition = GeoPoint.latLon(eva.rsaMsg().position().lat() / 1e7
+                    , eva.rsaMsg().position().lon() / 1e7);
+            handleEmergencyVehicle(evPosition, eva.rsaMsg().position().heading() * 0.0125,
+                    eva.id());
         }
     }
 
     private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message) {
         RoadSideAlert rsa = message.getTcrosProtocol();
         if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
-            handleEmergencyVehicle();
+            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
+                    , rsa.position().lon() / 1e7);
+            String evId = "RSA_" + rsa.msgCnt();
+            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, evId);
+        }
+    }
+
+    private void handleEmergencyVehicle(GeoPoint evPosition, Double evHeading, String evId) {
+        // 避免重複避讓
+        if (hasAlreadyYieldedTo(evId)) {
+            System.out.println("[ControlCore] veh_%d: Already yielded to EV: " + evId);
+            return;
+        }
+        if (evPosition == null || currentPoint == null || heading == null || evHeading == null) {
+            lastYieldAction = YieldAction.NONE;
+            return;
+        }
+
+        double distance = currentPoint.distanceTo(evPosition);  // 自身與緊急車輛的距離
+        double headingDiff = Math.abs(heading - evHeading);     // 自身車輛與緊急車輛的角度差異
+
+        if (distance > 100 || headingDiff > 30) { lastYieldAction = YieldAction.NONE; }
+        else if (canChangeLaneLeft()) { lastYieldAction = YieldAction.CHANGE_LANE_LEFT; }
+        else if (canChangeLaneRight()) { lastYieldAction = YieldAction.CHANGE_LANE_RIGHT; }
+        else { lastYieldAction = YieldAction.STOP; }
+        yieldedToEvIds.add(evId);
+    }
+    private boolean canChangeLaneLeft() { }
+    private boolean canChangeLaneRight() { }
+
+    private boolean hasAlreadyYieldedTo(String evId) {
+        boolean inSight = false;
+        // TODO: 判斷是否已經在車輛視界
+
+
+        return yieldedToEvIds.contains(evId) && inSight;
+    }
+
+    public void markYieldedTo(String evId) { yieldedToEvIds.add(evId); }
+
+    public YieldAction getLastYieldAction() { return lastYieldAction; }
+
+    private boolean hasToYield(String evId) { return !hasAlreadyYieldedTo(evId); }
+
+    public void clearYieldMemoryIfEvGone(String evId, GeoPoint evPosition) {
+        double distance = currentPoint.distanceTo(evPosition);
+        if (distance > 150) {
+            yieldedToEvIds.remove(evId);
         }
     }
 
@@ -264,10 +333,6 @@ public class ObuControlCore {
         srmRecords.add(srm);
     }
 
-    private void handleEmergencyVehicle() {
-        // TODO: 避讓功能
-    }
-
     private int nextEvaMsgCnt() {
         int current = evaMsgCnt;
         evaMsgCnt = (evaMsgCnt + 1) % 128;
@@ -275,23 +340,34 @@ public class ObuControlCore {
     }
 
     public boolean needSendEva() {
+        // TODO: 未實做
         return needSendSrm();
     }
 
-    public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
+    public EmergencyVehicleAlert createEva(long simOffsetTimeMs) {
         EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
 
+        // 車輛 ID 與基本類型
         evaBuilder.setId(evaVehicleId);
         evaBuilder.setBasicType(BasicType.special);
+
+        // 經緯度轉換為 J2735 格式（1/10 微度）
+        long lat10MicroDeg = Math.round(currentPoint.getLatitude() * 10_000_000);
+        long lon10MicroDeg = Math.round(currentPoint.getLongitude() * 10_000_000);
+
+        // 高程轉換為 10cm 單位（若無資料則設為 0）
+        long elevationDeciMeter = Math.round(currentPoint.getAltitude() * 10);
+
+        // RSA 訊息建構
         evaBuilder.rsaBuilder
                 .setMsgCnt(nextEvaMsgCnt())
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
-                //description
                 .setPriority(RsaPriority.PRIORITY_7)
-                //extent = Object.extent
                 .setHeadingDegree(heading)
-                .setPosition(TimeUtil.toUtcTime(simOffsetTimeMs), 0L, 0L, 0L)
+                .setPosition(TimeUtil.toUtcTime(simOffsetTimeMs), lon10MicroDeg, lat10MicroDeg, elevationDeciMeter)
                 .setSpeed(TransmissionState.UNAVAILABLE, speedRecords.get(speedRecords.size() - 1));
+
+        // EVA 額外欄位
         evaBuilder.setResponseType(ResponseType.emergency);
         evaBuilder.setDetails(
                 new Details(
@@ -304,6 +380,7 @@ public class ObuControlCore {
         );
         evaBuilder.setMass(400);
         evaBuilder.setBasicType(BasicType.special);
+
         return evaBuilder.create();
     }
 
@@ -377,6 +454,13 @@ public class ObuControlCore {
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,srmRecords);
         outputFile = logPath.resolve("EvaRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,evaRecords);
+    }
+
+    public OptionalLong getTotalDrivingDurationSeconds() {
+        if (drivingRecords.size() < 2) return OptionalLong.empty();
+        long start = drivingRecords.get(0).sTime();
+        long end = drivingRecords.get(drivingRecords.size() - 1).sTime();
+        return OptionalLong.of(end - start);
     }
 
     public void exportDrivingRecords() throws IOException {
