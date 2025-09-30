@@ -590,8 +590,8 @@ public class RsuControlCore {
                 eva.rsaMsg().heading(),
                 eva.rsaMsg().extent(),
                 eva.rsaMsg().position().utcTime(),
-                eva.rsaMsg().position().lat(),
                 eva.rsaMsg().position().lon(),
+                eva.rsaMsg().position().lat(),
                 eva.rsaMsg().position().elevation(),
 
                 Optional.ofNullable(eva.rsaMsg().position().heading()),
