@@ -1,5 +1,4 @@
 import Configurations.ObuConfiguration;
-import Configurations.VehicleConfiguration;
 import CoreModule.ObuControlCore;
 import Singleton.RealTimeReferencePoint;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
@@ -58,12 +57,6 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
                 .distance(150)
                 .create());
         getLog().infoSimTime(this,"Vehicle ID:{}",getOs().getId());
-
-        VehicleSightDistanceConfiguration sightConfig = new VehicleSightDistanceConfiguration(
-                getOs().getSimulationTime(),
-                getOs().getId(),
-                20,
-                180);
     }
     @Override
     public void processEvent(Event event){
@@ -84,6 +77,7 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
             sendEva();
         }
     }
+
     private void updateLog(VehicleData newVehicleData){
         getLog().infoSimTime(this,"==================");
         getLog().infoSimTime(this,"Vehicle has been update");
@@ -116,6 +110,10 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         getLog().infoSimTime(this, "Send SRM,Request junction.{}",obuControlCore.getUpcomingNode().getId());
     }
 
+    private long getRealMilliTimeInSimOffset(){
+        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
+    }
+
     private void sendEva(){
         final MessageRouting routing = getOperatingSystem()
                 .getAdHocModule()
@@ -129,10 +127,6 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         getLog().infoSimTime(this, "Send EVA,info junction.{}",
                 obuControlCore.getUpcomingNode() != null ?
                         obuControlCore.getUpcomingNode().getId() : "null");
-    }
-
-    private long getRealMilliTimeInSimOffset() {
-        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
     }
 
     @Override

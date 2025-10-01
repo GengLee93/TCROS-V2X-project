@@ -53,7 +53,7 @@ public class RsuControlCore {
     private final Long priorityEndTime;
     private final Path logPath;
     private Long simTime;
-    private int rsaMsgCounter = new Random().nextInt(128);  // rsa 訊息序列識別，能來自同一來源（同一 RSU）
+    private int rsaMsgCnt = new Random().nextInt(128);  // rsa 訊息序列識別，能來自同一來源（同一 RSU）
 
     // 時間佇列管理器，負責管理多個不同狀態的車輛請求佇列
     private TimeQueueManager<SignalRequestMessage> timeQueueManager;
@@ -616,8 +616,8 @@ public class RsuControlCore {
     }
 
     private int nextRsaMsgCnt() {
-        rsaMsgCounter = (rsaMsgCounter + 1) % 128;
-        return rsaMsgCounter;
+        rsaMsgCnt = (rsaMsgCnt + 1) % 128;
+        return rsaMsgCnt;
     }
 
     private boolean isFreshMsg(String deviceId, int msgCnt, long currentSimTime) {
