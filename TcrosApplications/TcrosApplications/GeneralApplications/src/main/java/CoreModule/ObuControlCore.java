@@ -1,7 +1,7 @@
 package CoreModule;
 
 import CommonClass.DrivingRecord;
-import CommonClass.RsaClass.UtcTime;
+import CommonClass.EvaClass.*;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
 import CommonEnum.*;
@@ -9,18 +9,21 @@ import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.EvaBuilder;
 import CommonUtil.TcrosBuilder.SrmBuilder;
 import Configurations.ObuConfiguration;
-import Configurations.VehicleConfiguration;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
+import Util.TimeUtil;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.eclipse.mosaic.fed.application.ambassador.SimulationKernel;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
 import org.eclipse.mosaic.lib.objects.road.INode;
+import org.eclipse.mosaic.lib.objects.road.IRoadPosition;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleRoute;
 import org.eclipse.mosaic.rti.TIME;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -28,36 +31,55 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 
 public class ObuControlCore {
-    private final int vehicleId;
-    private final Long stopBroadcastStartTime;
-    private final Long stopBroadcastEndTime;
-    private final Long errorSrmBroadcastStartTime;
-    private final Long errorSrmBroadcastEndTime;
-    private final List<Double> speedRecords;
-    private final List<SignalRequestMessage> srmRecords;
-    private final List<SignalStatusMessage> ssmRecords;
-    private final List<EmergencyVehicleAlert> evaRecords;
-    private final List<DrivingRecord> drivingRecords;
-    private final Path logPath;
-    private Long simTime;
-    private GeoPoint currentPoint;
-    private TimerQueueEntry<SPaTData> spatTimer;
-    private TimerQueueEntry<V2XMapData> mapTimer;
-    private INode upcomingNode;
-    private INode previousNode;
-    private VehicleRoute vehicleRoute;
-    private final List<String> routeConnections;
-    private int routeLanesIndex;
-    private static final int RECEIVED_TIME_OUT_LIMIT = 5;
-    private int evaMsgCnt = new Random().nextInt(128);
-    private double heading;
-    private final String evaVehicleId;
+    private static final Logger log = LoggerFactory.getLogger(ObuControlCore.class);
+    private final Path logPath;                    // 日誌儲存路徑
+
+    // ==================== 車輛識別與狀態 ====================
+    private final int vehicleId;                   // 車輛唯一識別碼
+    private Double heading;                        // 車輛行進方向（角度）
+    private final String evaVehicleId;             // 緊急車輛識別碼（若為EVA）
+
+    // ==================== 全局模擬時間位置 ===================
+    private Long simTime;                          // 模擬時間戳
+    private GeoPoint currentPoint;                 // 當前地理位置
+
+    // ==================== 廣播控制時間 ====================
+    private final Long stopBroadcastStartTime;     // 停止廣播起始時間
+    private final Long stopBroadcastEndTime;       // 停止廣播結束時間
+    private final Long errorSrmBroadcastStartTime; // 錯誤 SRM 廣播起始時間
+    private final Long errorSrmBroadcastEndTime;   // 錯誤 SRM 廣播結束時間
+
+    // ==================== 車輛行駛紀錄 ====================
+    private final List<Double> speedRecords;       // 速度紀錄
+    private final List<DrivingRecord> drivingRecords; // 駕駛行為紀錄
+
+    // ==================== V2X 訊息紀錄 ====================
+    private final List<SignalRequestMessage> srmRecords; // SRM 訊息紀錄
+    private final List<SignalStatusMessage> ssmRecords;  // SSM 訊息紀錄
+    private final List<EmergencyVehicleAlert> evaRecords;// EVA 訊息紀錄
+
+    // ==================== 計時器模組 ====================
+    private TimerQueueEntry<SPaTData> spatTimer;         // SPaT 訊息計時器
+    private TimerQueueEntry<V2XMapData> mapTimer;        // MAP 訊息計時器
+
+    // ==================== 路線與節點資訊 ====================
+    private INode upcomingNode;                   // 即將抵達的節點
+    private INode previousNode;                   // 剛通過的節點
+    private VehicleRoute vehicleRoute;            // 車輛路線資訊
+    private final List<String> routeConnections;  // 路線連接資訊
+    private int routeLanesIndex;                  // 當前車道索引
+
+    // ==================== 模擬常數 ====================
+    private static final int RECEIVED_TIME_OUT_LIMIT = 5; // 接收超時限制（秒）
+    private int evaMsgCnt = 0;                    // EVA::MsgCnt
+
+    // ==================== 避讓動作狀態 ====================
+    private final Set<String> yieldedToEvIds = new HashSet<>();
+    public enum YieldAction { CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, NONE }
+    private YieldAction lastYieldAction = YieldAction.NONE; // 上一次執行的避讓動作
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
@@ -154,6 +176,7 @@ public class ObuControlCore {
             mapTimer = TimerQueueEntry.emptyEntry();
         }
     }
+
     public INode getUpcomingNode(){return upcomingNode;}
     public INode getPreviousNode(){return previousNode;}
     public TimerQueueEntry<SPaTData> getSpatTimer(){
@@ -188,9 +211,10 @@ public class ObuControlCore {
             handleMapData((TcrosProtocolV2xMessage<V2XMapData>) message);
         } else if (protocolClassName.equals(SignalStatusMessage.class.getName())) {
             handleSsm((TcrosProtocolV2xMessage<SignalStatusMessage>) message);
-        }
-        else if(protocolClassName.equals(EmergencyVehicleAlert.class.getName())){
+        }  else if (protocolClassName.equals(EmergencyVehicleAlert.class.getName())) {
             handleEva((TcrosProtocolV2xMessage<EmergencyVehicleAlert>) message);
+        } else if (protocolClassName.equals(RoadSideAlert.class.getName())) {
+            handleRsa((TcrosProtocolV2xMessage<RoadSideAlert>) message);
         }
     }
 
@@ -217,7 +241,67 @@ public class ObuControlCore {
 
     private void handleEva(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
+        if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE
+                && eva.details().responseType() == ResponseType.emergency) {
+            GeoPoint evPosition = GeoPoint.latLon(eva.rsaMsg().position().lat() / 1e7
+                    , eva.rsaMsg().position().lon() / 1e7);
+            handleEmergencyVehicle(evPosition, eva.rsaMsg().position().heading() * 0.0125,
+                    eva.id());
+        }
+    }
 
+    private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message) {
+        RoadSideAlert rsa = message.getTcrosProtocol();
+        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
+                    , rsa.position().lon() / 1e7);
+            String evId = "RSA_" + rsa.msgCnt();
+            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, evId);
+        }
+    }
+
+    private void handleEmergencyVehicle(GeoPoint evPosition, Double evHeading, String evId) {
+        // 避免重複避讓
+        if (hasAlreadyYieldedTo(evId)) {
+            System.out.println("[ControlCore] veh_%d: Already yielded to EV: " + evId);
+            return;
+        }
+        if (evPosition == null || currentPoint == null || heading == null || evHeading == null) {
+            lastYieldAction = YieldAction.NONE;
+            return;
+        }
+
+        double distance = currentPoint.distanceTo(evPosition);  // 自身與緊急車輛的距離
+        double headingDiff = Math.abs(heading - evHeading);     // 自身車輛與緊急車輛的角度差異
+
+        if (distance > 100 || headingDiff > 30) { lastYieldAction = YieldAction.NONE; }
+        else if (canChangeLaneLeft()) { lastYieldAction = YieldAction.CHANGE_LANE_LEFT; }
+        else if (canChangeLaneRight()) { lastYieldAction = YieldAction.CHANGE_LANE_RIGHT; }
+        else { lastYieldAction = YieldAction.STOP; }
+        yieldedToEvIds.add(evId);
+    }
+    private boolean canChangeLaneLeft() { }
+    private boolean canChangeLaneRight() { }
+
+    private boolean hasAlreadyYieldedTo(String evId) {
+        boolean inSight = false;
+        // TODO: 判斷是否已經在車輛視界
+
+
+        return yieldedToEvIds.contains(evId) && inSight;
+    }
+
+    public void markYieldedTo(String evId) { yieldedToEvIds.add(evId); }
+
+    public YieldAction getLastYieldAction() { return lastYieldAction; }
+
+    private boolean hasToYield(String evId) { return !hasAlreadyYieldedTo(evId); }
+
+    public void clearYieldMemoryIfEvGone(String evId, GeoPoint evPosition) {
+        double distance = currentPoint.distanceTo(evPosition);
+        if (distance > 150) {
+            yieldedToEvIds.remove(evId);
+        }
     }
 
     public SignalRequestMessage createSRM(long simOffsetTimeMs){
@@ -248,6 +332,60 @@ public class ObuControlCore {
     public void addSrmRecord(SignalRequestMessage srm){
         srmRecords.add(srm);
     }
+
+    private int nextEvaMsgCnt() {
+        int current = evaMsgCnt;
+        evaMsgCnt = (evaMsgCnt + 1) % 128;
+        return current;
+    }
+
+    public boolean needSendEva() {
+        // TODO: 未實做
+        return needSendSrm();
+    }
+
+    public EmergencyVehicleAlert createEva(long simOffsetTimeMs) {
+        EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
+
+        // 車輛 ID 與基本類型
+        evaBuilder.setId(evaVehicleId);
+        evaBuilder.setBasicType(BasicType.special);
+
+        // 經緯度轉換為 J2735 格式（1/10 微度）
+        long lat10MicroDeg = Math.round(currentPoint.getLatitude() * 10_000_000);
+        long lon10MicroDeg = Math.round(currentPoint.getLongitude() * 10_000_000);
+
+        // 高程轉換為 10cm 單位（若無資料則設為 0）
+        long elevationDeciMeter = Math.round(currentPoint.getAltitude() * 10);
+
+        // RSA 訊息建構
+        evaBuilder.rsaBuilder
+                .setMsgCnt(nextEvaMsgCnt())
+                .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
+                .setPriority(RsaPriority.PRIORITY_7)
+                .setHeadingDegree(heading)
+                .setPosition(TimeUtil.toUtcTime(simOffsetTimeMs), lon10MicroDeg, lat10MicroDeg, elevationDeciMeter)
+                .setSpeed(TransmissionState.UNAVAILABLE, speedRecords.get(speedRecords.size() - 1));
+
+        // EVA 額外欄位
+        evaBuilder.setResponseType(ResponseType.emergency);
+        evaBuilder.setDetails(
+                new Details(
+                        SirenUse.inUse,
+                        LightUse.inUse,
+                        Multi.singleVehicle,
+                        new Events(Event.peEmergencySoundActive),
+                        ResponseType.emergency
+                )
+        );
+        evaBuilder.setMass(400);
+        evaBuilder.setBasicType(BasicType.special);
+
+        return evaBuilder.create();
+    }
+
+    public void addEvaRecord(EmergencyVehicleAlert eva) { evaRecords.add(eva); }
+
     private Requests getNodePreviousRequest(String nodeId){
         if(!srmRecords.isEmpty()){
             for (int i = srmRecords.size()-1; i >=0 ; i--){
@@ -293,6 +431,7 @@ public class ObuControlCore {
                 .average()
                 .orElse(0.0);
     }
+
     public double getUpcomingNodeETCms(){
         if(upcomingNode != null){
             double averageSpeed = getAverageSpeed();
@@ -304,7 +443,6 @@ public class ObuControlCore {
         }else{
             return Double.NaN;
         }
-
     }
 
     public GeoPoint getCurrentPoint(){
@@ -315,7 +453,14 @@ public class ObuControlCore {
         File outputFile = logPath.resolve("SrmRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,srmRecords);
         outputFile = logPath.resolve("EvaRecords.json").toFile();
-        ObjectExportUtil.exportTcrosBaseMessage(outputFile, evaRecords);
+        ObjectExportUtil.exportTcrosBaseMessage(outputFile,evaRecords);
+    }
+
+    public OptionalLong getTotalDrivingDurationSeconds() {
+        if (drivingRecords.size() < 2) return OptionalLong.empty();
+        long start = drivingRecords.get(0).sTime();
+        long end = drivingRecords.get(drivingRecords.size() - 1).sTime();
+        return OptionalLong.of(end - start);
     }
 
     public void exportDrivingRecords() throws IOException {
@@ -328,54 +473,11 @@ public class ObuControlCore {
                 .getParent()
                 .getFileName()
                 .toString()
-                .replace("log-", "");
+                .replace("log-","");
 
-        File outputFile = logPath.resolve(logPrefix + "_drivingRecord.csv").toFile();
+        File outputFile = logPath.resolve(logPrefix+"_drivingRecord.csv").toFile();
         try (BufferedWriter writer = Files.newBufferedWriter(outputFile.toPath(), StandardCharsets.UTF_8)) {
             mapper.writer(schema).writeValues(writer).writeAll(drivingRecords);
         }
     }
-
-    private int nextEvaMsgCnt() {
-        int current = evaMsgCnt;
-        evaMsgCnt = (evaMsgCnt + 1) % 128;
-        return current;
-    }
-
-    public boolean needSendEva(){ return needSendSrm(); }
-
-    public EmergencyVehicleAlert createEva(long simOffsetTimeMs){
-        EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
-
-        evaBuilder.setId(evaVehicleId);
-        evaBuilder.setResponseType(ResponseType.emergency);
-        //details
-        evaBuilder.setBasicType(BasicType.special);
-
-        evaBuilder.rsaBuilder
-                .setMsgCnt(nextEvaMsgCnt())
-                .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
-                //description
-                .setPriority(RsaPriority.PRIORITY_7)
-                .setHeadingBitString(Double.toString(heading))
-                //extent = Object.extent
-
-                //position
-                .setHeadingByDegree(heading)
-                .setPosition(new UtcTime(0, 0, 0, 0, 0, 0), 0L, 0L, 0L)
-                .setSpeed(speedRecords.get(speedRecords.size() - 1), TransmissionState.UNAVAILABLE)
-                //Accuracy
-                .setConfidence(
-                        TimeConfidence.Unavailable,
-                        PosLevel.UNAVAILABLE,
-                        ElevationLevel.UNAVAILABLE,
-                        HeadingConfidence.UNAVAILABLE,
-                        SpeedLevel.UNAVAILABLE,
-                        ThrottleConfidence.UNAVAILABLE
-                );
-
-        return evaBuilder.create();
-    }
-
-    public void addEvaRecord(EmergencyVehicleAlert eva) { evaRecords.add(eva); }
 }

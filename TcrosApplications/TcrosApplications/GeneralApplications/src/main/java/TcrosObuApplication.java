@@ -3,6 +3,8 @@ import CoreModule.ObuControlCore;
 import Singleton.RealTimeReferencePoint;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.eclipse.mosaic.fed.application.ambassador.simulation.communication.AdHocModuleConfiguration;
 import org.eclipse.mosaic.fed.application.ambassador.simulation.communication.CamBuilder;
 import org.eclipse.mosaic.fed.application.ambassador.simulation.communication.ReceivedAcknowledgement;
@@ -13,9 +15,16 @@ import org.eclipse.mosaic.fed.application.app.api.VehicleApplication;
 import org.eclipse.mosaic.fed.application.app.api.os.VehicleOperatingSystem;
 import org.eclipse.mosaic.interactions.communication.V2xMessageTransmission;
 import org.eclipse.mosaic.interactions.vehicle.VehicleLaneChange;
+import org.eclipse.mosaic.interactions.vehicle.VehicleSightDistanceConfiguration;
 import org.eclipse.mosaic.lib.enums.AdHocChannel;
+import org.eclipse.mosaic.lib.enums.LaneChangeMode;
+import org.eclipse.mosaic.lib.enums.VehicleClass;
+import org.eclipse.mosaic.lib.enums.VehicleStopMode;
 import org.eclipse.mosaic.lib.geo.GeoCircle;
+import org.eclipse.mosaic.lib.geo.GeoPoint;
+import org.eclipse.mosaic.lib.geo.UtmPoint;
 import org.eclipse.mosaic.lib.objects.v2x.MessageRouting;
+import org.eclipse.mosaic.lib.objects.v2x.V2xMessage;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.util.scheduling.Event;
 import org.jetbrains.annotations.NotNull;
@@ -23,9 +32,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Optional;
+import java.util.OptionalLong;
 
-public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguration, VehicleOperatingSystem> implements VehicleApplication, CommunicationApplication {
+public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguration, VehicleOperatingSystem>
+        implements VehicleApplication, CommunicationApplication {
     private static final int GEO_BOARD_CAST_RADIUS = 200;
+    private static final Log log = LogFactory.getLog(TcrosObuApplication.class);
     private ObuControlCore obuControlCore;
     private RealTimeReferencePoint timeReferencePoint;
     public TcrosObuApplication(){
@@ -57,8 +70,12 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     }
 
     private void updateMessageSend(){
-        if (obuControlCore.needSendSrm()) { sendSrm(); }
-        if (obuControlCore.needSendEva()) { sendEva(); }
+        // TODO: 判斷是否為救護車邏輯重寫
+        if (getOs().getVehicleParameters().getInitialVehicleType().getVehicleClass()
+                == VehicleClass.EmergencyVehicle ) {
+            if (obuControlCore.needSendSrm()) { sendSrm(); }
+            sendEva();
+        }
     }
 
     private void updateLog(VehicleData newVehicleData){
@@ -73,8 +90,10 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
                 obuControlCore.getSpatTimer().isEmpty() ? "null" : obuControlCore.getSpatTimer().getTimer(),
                 obuControlCore.getMapTimer().isEmpty() ? "null" : obuControlCore.getMapTimer().getTimer()
         );
+        getLog().infoSimTime(this,"Vehicle name:{}", newVehicleData.getName());
         getLog().infoSimTime(this,"Previous Node:{}",obuControlCore.getPreviousNode() == null ? "null" : obuControlCore.getPreviousNode() .getId());
         getLog().infoSimTime(this,"RouteId:{}" , newVehicleData.getRouteId());
+        getLog().infoSimTime(this, "Total driving time: {} s", obuControlCore.getTotalDrivingDurationSeconds().orElse(0L));
         getLog().infoSimTime(this,"==================");
     }
 
@@ -91,6 +110,10 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         getLog().infoSimTime(this, "Send SRM,Request junction.{}",obuControlCore.getUpcomingNode().getId());
     }
 
+    private long getRealMilliTimeInSimOffset(){
+        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
+    }
+
     private void sendEva(){
         final MessageRouting routing = getOperatingSystem()
                 .getAdHocModule()
@@ -101,11 +124,9 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         TcrosProtocolV2xMessage<EmergencyVehicleAlert> sendMessage =  new TcrosProtocolV2xMessage<>(routing,eva,EmergencyVehicleAlert.class);
         sendMessage.setSenderId(getOs().getId());
         getOs().getAdHocModule().sendV2xMessage(sendMessage);
-        getLog().infoSimTime(this, "Send EVA,info junction.{}",obuControlCore.getUpcomingNode().getId());
-    }
-
-    private long getRealMilliTimeInSimOffset(){
-        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
+        getLog().infoSimTime(this, "Send EVA,info junction.{}",
+                obuControlCore.getUpcomingNode() != null ?
+                        obuControlCore.getUpcomingNode().getId() : "null");
     }
 
     @Override
@@ -113,8 +134,36 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         if (receivedV2xMessage.getMessage() instanceof TcrosProtocolV2xMessage<?> message) {
             obuControlCore.handleMessage(message);
             writeReceivedMessageLog(message);
+
+            // 分緊急車輛必須執行對應變道邏輯
+            if (getOs().getVehicleParameters().getInitialVehicleType().getVehicleClass()
+                    != VehicleClass.EmergencyVehicle) {
+                if (message.getTcrosProtocol() instanceof RoadSideAlert rsa ||
+                    message.getTcrosProtocol() instanceof EmergencyVehicleAlert eva) {
+                    executeYieldAction(obuControlCore.getLastYieldAction());
+                }
+            }
         }
     }
+
+    private void executeYieldAction(ObuControlCore.YieldAction action) {
+        switch (action) {
+            case CHANGE_LANE_LEFT -> {
+                getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_LEFT, 1_000_000_000L);
+                log.info("Left lane change successful");
+            }
+            case CHANGE_LANE_RIGHT -> {
+                getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_RIGHT, 5_000_000_000L);
+                log.info("Right lane change successful");
+            }
+            case STOP -> {
+                getOs().stopNow(VehicleStopMode.PARK_ON_ROADSIDE, 5_000_000_000L);
+                log.info("Acceleration failed, pulling over to stop");
+            }
+            case NONE -> log.info("No Yield Action");
+        }
+    }
+
     private void writeReceivedMessageLog(TcrosProtocolV2xMessage<?> message){
         getLog().infoSimTime(this,
                 "Message received, sender:{},type:{}"

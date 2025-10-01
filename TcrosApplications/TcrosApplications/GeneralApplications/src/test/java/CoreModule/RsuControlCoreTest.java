@@ -2,6 +2,7 @@ package CoreModule;
 
 import Configurations.RsuConfiguration;
 import JsonMapper.JsonMapper;
+import TcrosProtocols.EmergencyVehicleAlert;
 import TcrosProtocols.SignalRequestMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
@@ -40,6 +41,5 @@ class RsuControlCoreTest {
         }
         rsuControlCore.updateAllState(180 * TIME.SECOND);
         System.out.println(rsuControlCore.assertRequestTypeBySrm(srm));
-
     }
 }

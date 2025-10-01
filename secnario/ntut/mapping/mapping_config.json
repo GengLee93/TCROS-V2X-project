@@ -11,6 +11,7 @@
       "sigma": 0.5,
       "tau": 1.0,
       "speedFactor": 1.0,
+      "laneChangeMode": "COOPERATIVE",
       "deviations": {
         "length": 0.0,
         "width": 0.0,
@@ -21,6 +22,34 @@
         "accel": 0.0,
         "decel": 0.0,
         "tau": 0.0
+      },
+      "applications": [
+        "TcrosObuApplication"
+      ]
+    },
+    {
+      "name": "Ambulance",
+      "length": "5.5 m",
+      "minGap": "2.0 m",
+      "maxSpeed": "90.0 m/s",
+      "vehicleClass": "EmergencyVehicle",
+      "accel": 3.2,
+      "decel": 5.5,
+      "emergencyDecel": 7.5,
+      "sigma": 0.5,
+      "tau": 1.0,
+      "speedFactor": 1.2,
+      "laneChangeMode": "AGGRESSIVE",
+      "deviations": {
+        "length": 0.2,
+        "width": 0.1,
+        "height": 0.1,
+        "minGap": 0.1,
+        "maxSpeed": 0.0,
+        "speedFactor": 0.05,
+        "accel": 0.1,
+        "decel": 0.1,
+        "tau": 0.05
       },
       "applications": [
         "TcrosObuApplication"
@@ -98,7 +127,7 @@
       "departSpeedMode": "MAXIMUM",
       "types": [
         {
-          "name": "Car",
+          "name": "Ambulance",
           "weight": 1.0,
           "applications": []
         }

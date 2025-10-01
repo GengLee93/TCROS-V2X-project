@@ -112,7 +112,7 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
         getLog().infoSimTime(this,"Granted Vehicle:{}",controlCore.getGrantedVehicleId());
         getLog().infoSimTime(this,"Passed Queue:{}", controlCore.getPassedVehicleIds());
         getLog().infoSimTime(this,"Rejected Queue:{}", controlCore.getRejectedVehicleIds());
-        getLog().infoSimTime(this, "RsaQueue: {}", controlCore.getRsaActivityEventIds());
+        getLog().infoSimTime(this,"Rsa Queue: {}", controlCore.getRsaActivityEventIds());
         getLog().infoSimTime(this,"============================");
     }
 
@@ -152,12 +152,10 @@ public class TcrosRsuApplication extends ConfigurableApplication<RsuConfiguratio
     private void broadCastRsa() {
         if (controlCore.needSendRsa()) {
             final MessageRouting routing = createGeoBroadCastMessageRouting();
-            RoadSideAlert ras = controlCore.createRsa(getRealMilliTimeInSimOffset());
-            controlCore.addRsaRecord(ras);
-
-            // TODO: 需依照 RSA 中的廣播範圍動態生成廣播範圍
-
-            TcrosProtocolV2xMessage<RoadSideAlert> rsaMessage = new TcrosProtocolV2xMessage<>(routing, ras, RoadSideAlert.class);
+            RoadSideAlert rsa = controlCore.createRsa(getRealMilliTimeInSimOffset());
+            if (rsa == null) { return; }
+            controlCore.addRsaRecord(rsa);
+            TcrosProtocolV2xMessage<RoadSideAlert> rsaMessage = new TcrosProtocolV2xMessage<>(routing, rsa, RoadSideAlert.class);
             rsaMessage.setSenderId(getOs().getId());
             getOs().getAdHocModule().sendV2xMessage(rsaMessage);
             getLog().infoSimTime(this, "RSA has sent.");

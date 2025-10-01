@@ -23,9 +23,6 @@ public enum PosLevel implements IDescriptionEnum<Integer> {
     @Override
     public String getDescription() { return description; }
 
-    @JsonValue
-    public Integer toValue() { return id; }
-
     @JsonCreator
     public static PosLevel fromValue(Integer value) {
         for (PosLevel level : values()) {
