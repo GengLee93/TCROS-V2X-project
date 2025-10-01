@@ -242,6 +242,7 @@ public class ObuControlCore {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
         if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE
                 && eva.details().responseType() == ResponseType.emergency) {
+            // TODO: Refactor this logic post-deadline for better separation of concerns
             String conn = eva.rsaMsg().senderConnectionId();
             Integer lane = eva.rsaMsg().senderLaneIndex();
             PositionInfo pos = eva.rsaMsg().position();

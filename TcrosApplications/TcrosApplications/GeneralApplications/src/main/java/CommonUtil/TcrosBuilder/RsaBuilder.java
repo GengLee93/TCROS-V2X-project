@@ -30,6 +30,7 @@ public class RsaBuilder {
     private PosConfidence posConfidence;
     private SpeedConfidence speedConfidence;
 
+    // TODO: 未來要將這不屬於 RSA 物件拿掉
     private String senderConnectionId;
     private Integer senderLaneIndex;
 
@@ -207,11 +208,13 @@ public class RsaBuilder {
         return this;
     }
 
-
+    // TODO: 未來要將這不屬於 RSA 物件拿掉
     public RsaBuilder setSenderConnectionId(String connId) {
         this.senderConnectionId = connId;
         return this;
     }
+
+    // TODO: 未來要將這不屬於 EVA 物件拿掉
     public RsaBuilder setSenderLaneIndex(Integer laneIdx) {
         this.senderLaneIndex = laneIdx;
         return this;
