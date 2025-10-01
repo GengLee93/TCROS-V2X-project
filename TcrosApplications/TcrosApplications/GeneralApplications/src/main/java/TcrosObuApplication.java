@@ -20,6 +20,7 @@ import org.eclipse.mosaic.lib.enums.AdHocChannel;
 import org.eclipse.mosaic.lib.enums.LaneChangeMode;
 import org.eclipse.mosaic.lib.enums.VehicleClass;
 import org.eclipse.mosaic.lib.enums.VehicleStopMode;
+import org.eclipse.mosaic.lib.enums.VehicleClass;
 import org.eclipse.mosaic.lib.geo.GeoCircle;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
 import org.eclipse.mosaic.lib.geo.UtmPoint;
@@ -29,6 +30,7 @@ import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.util.scheduling.Event;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.eclipse.mosaic.rti.TIME;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -41,6 +43,11 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     private static final Log log = LogFactory.getLog(TcrosObuApplication.class);
     private ObuControlCore obuControlCore;
     private RealTimeReferencePoint timeReferencePoint;
+    //避讓
+    private Integer lastLaneIdx = null;      // 上一個 tick 的 laneIndex（做 diff 用）
+    private Integer lastChangeTarget = null; // 這次要求的目標 laneIndex
+    private Long    lastChangeWhen = null;   // 這次換道預計執行的模擬時間（ns）
+    private String  lastChangeConnId = null; // 下指令當下所屬的 connection，驗證時需一致
     public TcrosObuApplication(){
         super(ObuConfiguration.class,"TcrosObuApplication");
     }
@@ -54,7 +61,7 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
                 .addRadio()
                 .channel(AdHocChannel.CCH)
                 .power(50)
-                .distance(150)
+                .distance(GEO_BOARD_CAST_RADIUS)
                 .create());
         getLog().infoSimTime(this,"Vehicle ID:{}",getOs().getId());
     }
@@ -62,15 +69,135 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     public void processEvent(Event event){
         /*No need to implement currently*/
     }
+
     @Override
     public void onVehicleUpdated(@Nullable VehicleData vehicleData, @NotNull VehicleData vehicleData1) {
-        obuControlCore.updateVehicleData(vehicleData1,getOs().getSimulationTime());
+        obuControlCore.updateVehicleData(vehicleData1, getOs().getSimulationTime());
         updateMessageSend();
+
+        // 換道
+        if (lastChangeTarget == null && obuControlCore.hasPendingLaneChange()) {
+            int delta = obuControlCore.consumeLaneChangeDelta();
+            tryLaneChange(delta);
+        }
+
+        // 讀取當前 lane跟connection
+        var rp = getOs().getVehicleData().getRoadPosition();
+        int curLane   = rp.getLaneIndex();
+        String curConn = rp.getConnectionId();
+
+        if (lastLaneIdx != null && curLane != lastLaneIdx) {
+            getLog().infoSimTime(this, "Avoidance[DIFF ]: prev={} -> now={} (conn={})", lastLaneIdx, curLane, curConn);
+        }
+        lastLaneIdx = curLane;
+
+        if (lastChangeTarget != null && lastChangeWhen != null) {
+            long now     = getOs().getSimulationTime();
+            long elapsed = now - lastChangeWhen;
+
+            if (now < lastChangeWhen) {
+                getLog().infoSimTime(this, "Avoidance: pending (waiting for scheduled when)");
+            } else {
+                String elapStr = String.format(java.util.Locale.ROOT, "%.3f", elapsed / (double) TIME.SECOND);
+                getLog().infoSimTime(this,
+                        "Avoidance[VERIFY]: cur={}, target={}, conn={}, storedConn={}, elapsed={}s",
+                        curLane, lastChangeTarget, curConn, lastChangeConnId, elapStr);
+
+                // connection 改變
+                if (lastChangeConnId != null && !lastChangeConnId.equals(curConn)) {
+                    getLog().infoSimTime(this,
+                            "Avoidance: ABORT verification (connection changed {} -> {}).",
+                            lastChangeConnId, curConn);
+                    lastChangeTarget = null;
+                    lastChangeWhen   = null;
+                    lastChangeConnId = null;
+
+                    // SUCCESS
+                } else if (curLane == lastChangeTarget) {
+                    getLog().infoSimTime(this, "Avoidance: SUCCESS, lane==target ({})", curLane);
+                    lastChangeTarget = null;
+                    lastChangeWhen   = null;
+                    lastChangeConnId = null;
+
+                    // TIMEOUT
+                } else if (elapsed >= (long)(5.0 * TIME.SECOND)) {
+                    getLog().infoSimTime(this,
+                            "Avoidance: TIMEOUT, still not at target (cur={}, expected={}, conn={})",
+                            curLane, lastChangeTarget, curConn);
+                    lastChangeTarget = null;
+                    lastChangeWhen   = null;
+                    lastChangeConnId = null;
+
+                    // 等待中
+                } else {
+                    getLog().infoSimTime(this,
+                            "Avoidance: waiting (cur={}, expected={}, elapsed={}s, conn={})",
+                            curLane, lastChangeTarget, elapStr, curConn);
+                }
+            }
+        }
         updateLog(vehicleData1);
     }
 
+    //避讓
+    private void tryLaneChange(int delta) {
+        if (lastChangeTarget != null){
+            getLog().infoSimTime(this, "Avoidance: skip try (verification in progress, target={})", lastChangeTarget);
+            return;
+        }
+        var rp = getOs().getVehicleData().getRoadPosition();
+        int lanes = rp.getConnection().getLanes();
+        int cur   = rp.getLaneIndex();
+
+        int chosenDelta = delta;
+        int target = cur + chosenDelta;
+
+        if (target < 0) target = 0;
+        if (target >= lanes) target = lanes - 1;
+
+        // 若與當前相同換反向試
+        if (target == cur) {
+            int altDelta = (delta > 0) ? -1 : +1;
+            int altTarget = cur + altDelta;
+            if (altTarget < 0) altTarget = 0;
+            if (altTarget >= lanes) altTarget = lanes - 1;
+
+            if (altTarget != cur) {
+                getLog().infoSimTime(this,
+                        "Avoidance: primary dir saturated (cur={}), try opposite dir -> altTarget={}",
+                        cur, altTarget);
+                chosenDelta = altDelta;
+                target = altTarget;
+            } else {
+                getLog().infoSimTime(this,
+                        "Avoidance: no lane available to change (cur={}, lanes={}), skip.",
+                        cur, lanes);
+                lastChangeTarget = null;
+                lastChangeWhen   = null;
+                lastChangeConnId = null;
+                return;
+            }
+        }
+
+        long now = getOs().getSimulationTime();
+        long when = now + (long)(0.1 * TIME.SECOND); // 推遲 0.1s，避免同 tick 排序競賽
+        String whenStr = String.format(java.util.Locale.ROOT, "%.3f", when / (double) TIME.SECOND);
+        getLog().infoSimTime(this,
+                "Avoidance: tryLaneChange enter, conn={}, cur={}, delta={}, target={}, lanes={}, when={}s",
+                rp.getConnectionId(), cur, chosenDelta, target, lanes, whenStr);
+
+        getOs().changeLane(target, when);
+
+        getLog().infoSimTime(this, "Avoidance: changeLane(targetIndex={}) sent.", target);
+
+        lastChangeTarget = target;
+        lastChangeWhen   = when;
+        lastChangeConnId = rp.getConnectionId();
+        getLog().infoSimTime(this, "Avoidance: target={} on conn={} stored for verification.",
+                target, lastChangeConnId);
+    }
+
     private void updateMessageSend(){
-        // TODO: 判斷是否為救護車邏輯重寫
         if (getOs().getVehicleParameters().getInitialVehicleType().getVehicleClass()
                 == VehicleClass.EmergencyVehicle ) {
             if (obuControlCore.needSendSrm()) { sendSrm(); }
@@ -110,10 +237,6 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         getLog().infoSimTime(this, "Send SRM,Request junction.{}",obuControlCore.getUpcomingNode().getId());
     }
 
-    private long getRealMilliTimeInSimOffset(){
-        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
-    }
-
     private void sendEva(){
         final MessageRouting routing = getOperatingSystem()
                 .getAdHocModule()
@@ -129,41 +252,17 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
                         obuControlCore.getUpcomingNode().getId() : "null");
     }
 
+    private long getRealMilliTimeInSimOffset() {
+        return timeReferencePoint.getRealTimeReferencePoint() + getOs().getSimulationTimeMs();
+    }
+
     @Override
     public void onMessageReceived(ReceivedV2xMessage receivedV2xMessage) {
         if (receivedV2xMessage.getMessage() instanceof TcrosProtocolV2xMessage<?> message) {
             obuControlCore.handleMessage(message);
             writeReceivedMessageLog(message);
-
-            // 分緊急車輛必須執行對應變道邏輯
-            if (getOs().getVehicleParameters().getInitialVehicleType().getVehicleClass()
-                    != VehicleClass.EmergencyVehicle) {
-                if (message.getTcrosProtocol() instanceof RoadSideAlert rsa ||
-                    message.getTcrosProtocol() instanceof EmergencyVehicleAlert eva) {
-                    executeYieldAction(obuControlCore.getLastYieldAction());
-                }
-            }
         }
     }
-
-    private void executeYieldAction(ObuControlCore.YieldAction action) {
-        switch (action) {
-            case CHANGE_LANE_LEFT -> {
-                getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_LEFT, 1_000_000_000L);
-                log.info("Left lane change successful");
-            }
-            case CHANGE_LANE_RIGHT -> {
-                getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_RIGHT, 5_000_000_000L);
-                log.info("Right lane change successful");
-            }
-            case STOP -> {
-                getOs().stopNow(VehicleStopMode.PARK_ON_ROADSIDE, 5_000_000_000L);
-                log.info("Acceleration failed, pulling over to stop");
-            }
-            case NONE -> log.info("No Yield Action");
-        }
-    }
-
     private void writeReceivedMessageLog(TcrosProtocolV2xMessage<?> message){
         getLog().infoSimTime(this,
                 "Message received, sender:{},type:{}"
