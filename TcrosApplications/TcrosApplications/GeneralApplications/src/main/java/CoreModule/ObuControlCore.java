@@ -10,7 +10,6 @@ import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.EvaBuilder;
 import CommonUtil.TcrosBuilder.SrmBuilder;
 import Configurations.ObuConfiguration;
-import Configurations.VehicleConfiguration;
 import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
 import Util.TimeUtil;
@@ -18,7 +17,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.eclipse.mosaic.fed.application.ambassador.SimulationKernel;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
-import org.eclipse.mosaic.lib.objects.road.INode;
+import org.eclipse.mosaic.lib.objects.road.*;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleRoute;
 import org.eclipse.mosaic.rti.TIME;
@@ -43,7 +42,6 @@ public class ObuControlCore {
     private final List<Double> speedRecords;
     private final List<SignalRequestMessage> srmRecords;
     private final List<SignalStatusMessage> ssmRecords;
-    private final List<RoadSideAlert> rsaRecords;
     private final List<EmergencyVehicleAlert> evaRecords;
     private final List<DrivingRecord> drivingRecords;
     private final Path logPath;
@@ -67,11 +65,11 @@ public class ObuControlCore {
     private String  currentConnectionId = null;
 
     private static final double AHEAD_BUFFER_METERS = 5.0; // 超過這個距離才算「確定在前面」
-    private static final long   EMERGENCY_INFO_TTL  = 5 * TIME.SECOND; // 避免太舊的 EVA 訊息
+    private static final long   EMERGENCY_INFO_TTL  = 5 * TIME.SECOND; // 緊急資訊有效時間
 
     // 目前所在 connection 的起點/終點（每次 onVehicleUpdated 會更新）
-    private org.eclipse.mosaic.lib.geo.GeoPoint curConnStart = null;
-    private org.eclipse.mosaic.lib.geo.GeoPoint curConnEnd   = null;
+    private GeoPoint currentConnStart = null;
+    private GeoPoint currentConnEnd = null;
 
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
@@ -79,8 +77,8 @@ public class ObuControlCore {
         vehicleId = Integer.parseInt(vid.substring(vid.indexOf("_")+1));
         stopBroadcastStartTime = configuration.stopBroadcastStartTime * TIME.SECOND;
         stopBroadcastEndTime = configuration.stopBroadcastEndTime * TIME.SECOND;
-        errorSrmBroadcastEndTime = configuration.errorSrmBroadcastEndTime * TIME.SECOND;
         errorSrmBroadcastStartTime = configuration.errorSrmBroadcastStartTime * TIME.SECOND;
+        errorSrmBroadcastEndTime = configuration.errorSrmBroadcastEndTime * TIME.SECOND;
         speedRecords = new ArrayList<>();
         upcomingNode = null;
         previousNode = null;
@@ -93,23 +91,25 @@ public class ObuControlCore {
         srmRecords = new ArrayList<>();
         ssmRecords = new ArrayList<>();
         drivingRecords = new ArrayList<>();
-        rsaRecords = new ArrayList<>();
         evaRecords = new ArrayList<>();
         evaVehicleId = vid;
     }
 
-    public void updateVehicleData(@NotNull VehicleData vd, Long sTime) {
+    public void updateVehicleData(@NotNull VehicleData newVehicleData, Long sTime) {
         simTime = sTime;
-        speedRecords.add(vd.getSpeed());
-        currentPoint = vd.getPosition();
+        speedRecords.add(newVehicleData.getSpeed());
+        currentPoint = newVehicleData.getPosition();
 
-        var rp   = vd.getRoadPosition();
-        var conn = rp.getConnection();
+        IRoadPosition roadPosition   = newVehicleData.getRoadPosition();
+        IConnection connection = roadPosition.getConnection();
+        INode nextNode = connection.getEndNode();
 
-        curConnStart = conn.getStartNode().getPosition();
-        curConnEnd   = conn.getEndNode().getPosition();
+        currentConnStart = connection.getStartNode().getPosition();
+        currentConnEnd = connection.getEndNode().getPosition();
+        currentLaneIndex    = roadPosition.getLaneIndex();
+        currentConnectionId = roadPosition.getConnectionId();
 
-        INode nextNode = conn.getEndNode();
+        heading = newVehicleData.getHeading();
         if (!Objects.equals(upcomingNode, nextNode)) {
             if (upcomingNode != null) {
                 drivingRecords.add(new DrivingRecord(upcomingNode.getId(), sTime / TIME.SECOND));
@@ -119,11 +119,7 @@ public class ObuControlCore {
             mapTimer.updateTimer();
             spatTimer.updateTimer();
         }
-        updateRouteInfo(vd);
-        heading = vd.getHeading();
-
-        currentLaneIndex    = rp.getLaneIndex();
-        currentConnectionId = rp.getConnectionId();
+        updateRouteInfo(newVehicleData);
     }
 
 
@@ -244,17 +240,18 @@ public class ObuControlCore {
 
     private void handleEva(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
-        if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+        if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE
+                && eva.details().responseType() == ResponseType.emergency) {
             String conn = eva.rsaMsg().senderConnectionId();
             Integer lane = eva.rsaMsg().senderLaneIndex();
-
             PositionInfo pos = eva.rsaMsg().position();
 
+            // 從 TCROS::EVA 中提取緊急車輛位置訊息
             double lat = (pos.lat() == null || pos.lat() == 900000001L) ? 0.0 : pos.lat() / 1e7d;
             double lon = (pos.lon() == null || pos.lon() == 1800000001L) ? 0.0 : pos.lon() / 1e7d;
             double alt = (pos.elevation() == null) ? 0.0 : pos.elevation() / 10.0;
 
-            GeoPoint evPos = GeoPoint.latLon(lat, lon, alt);
+            GeoPoint evPos = GeoPoint.latLon(lat, lon, alt);    // 緊急車輛位置
 
             lastEmergency = new EmergencyContext(conn, lane, evPos, simTime);
             handleEmergencyVehicle();
@@ -272,14 +269,7 @@ public class ObuControlCore {
             double lonDeg = (pos.lon() == null) ? Double.NaN : pos.lon() / 1e7d;
             double altM   = (pos.elevation() == null) ? 0.0 : pos.elevation() / 10.0;
 
-            // 避免經緯度輸入錯誤 如果錯誤就互換
-            if (!Double.isNaN(latDeg) && Math.abs(latDeg) > 90 &&
-                    !Double.isNaN(lonDeg) && Math.abs(lonDeg) <= 180) {
-                double tmp = latDeg; latDeg = lonDeg; lonDeg = tmp;
-            }
-
             GeoPoint evPos = GeoPoint.latLon(latDeg, lonDeg, altM);
-
 
             lastEmergency = new EmergencyContext(conn, lane, evPos, simTime);
             handleEmergencyVehicle();
@@ -324,10 +314,10 @@ public class ObuControlCore {
         if (!currentConnectionId.equals(ec.connId)) return;
         if (!Objects.equals(currentLaneIndex, ec.laneIdx)) return;
 
-        if (curConnStart == null || curConnEnd == null || currentPoint == null) return;
+        if (currentConnStart == null || currentConnEnd == null || currentPoint == null) return;
 
-        double myProg = projProgressOnConnection(curConnStart, curConnEnd, currentPoint);
-        double evProg = projProgressOnConnection(curConnStart, curConnEnd, ec.pos);
+        double myProg = projectProgressOnConnection(currentConnStart, currentConnEnd, currentPoint);
+        double evProg = projectProgressOnConnection(currentConnStart, currentConnEnd, ec.pos);
 
         double gap = myProg - evProg;
         if (gap >= AHEAD_BUFFER_METERS) {
@@ -335,8 +325,6 @@ public class ObuControlCore {
             requestLaneChange(-1);
         }
     }
-
-
 
     private int nextEvaMsgCnt() {
         int current = evaMsgCnt;
@@ -449,9 +437,7 @@ public class ObuControlCore {
         }
     }
 
-    public GeoPoint getCurrentPoint(){
-        return currentPoint;
-    }
+    public GeoPoint getCurrentPoint(){ return currentPoint; }
 
     public void exportSentMessage() throws IOException {
         File outputFile = logPath.resolve("SrmRecords.json").toFile();
@@ -489,39 +475,46 @@ public class ObuControlCore {
 
     private void requestLaneChange(int delta) { pendingLaneChangeDelta = delta; }
 
-    private static class EmergencyContext {
-        final String   connId;
-        final Integer  laneIdx;
-        final GeoPoint pos;
-        final long     recvSimTime;
-
-        EmergencyContext(String connId, Integer laneIdx, GeoPoint pos, long recvSimTime) {
-            this.connId = connId;
-            this.laneIdx = laneIdx;
-            this.pos = pos;
-            this.recvSimTime = recvSimTime;
-        }
+    private EmergencyContext lastEmergency = null;
+    private record EmergencyContext(
+            String connId,
+            Integer laneIdx,
+            GeoPoint pos,
+            long recvSimTime) {
     }
 
-    private EmergencyContext lastEmergency = null;
+    /**
+     * 計算某一點在指定道路連線上的投影進度（以公尺為單位）。
+     *
+     * @param start  道路連線的起點座標
+     * @param end    道路連線的終點座標
+     * @param point  要投影的目標點座標
+     * @return       該點在連線上的投影距離（單位：公尺）
+     */
+    private static double projectProgressOnConnection(GeoPoint start, GeoPoint end, GeoPoint point) {
+        // 取得起點、終點與目標點的經緯度座標
+        double startLon = start.getLongitude(), startLat = start.getLatitude();
+        double endLon = end.getLongitude(), endLat = end.getLatitude();
+        double pointLon = point.getLongitude(), pointLat = point.getLatitude();
 
-    private static double projProgressOnConnection(
-            org.eclipse.mosaic.lib.geo.GeoPoint start,
-            org.eclipse.mosaic.lib.geo.GeoPoint end,
-            org.eclipse.mosaic.lib.geo.GeoPoint p) {
+        // 計算起點到終點的向量 (dx, dy)
+        double dx = endLon - startLon;
+        double dy = endLat - startLat;
 
-        double sx = start.getLongitude(), sy = start.getLatitude();
-        double ex = end.getLongitude(),   ey = end.getLatitude();
-        double px = p.getLongitude(),     py = p.getLatitude();
+        // 計算起點到目標點的向量 (px, py)
+        double px = pointLon - startLon;
+        double py = pointLat - startLat;
 
-        double vx = ex - sx, vy = ey - sy;
-        double wx = px - sx, wy = py - sy;
-        double v2 = vx*vx + vy*vy;
-        if (v2 == 0) return 0.0;
+        // 若起點與終點相同，則無法計算投影，直接回傳 0
+        double segmentLengthSquared = dx * dx + dy * dy;
+        if (segmentLengthSquared == 0) { return 0.0; }
 
-        double t = (wx*vx + wy*vy) / v2;
-        double segmentMeters = start.distanceTo(end);
-        return t * segmentMeters;
+        // 計算目標點在連線上的投影比例（0 表示起點，1 表示終點）
+        double projectionRatio = (px * dx + py * dy) / segmentLengthSquared;
+
+        // 將比例轉換為實際距離（單位：公尺）
+        double segmentLengthMeters = start.distanceTo(end);
+        return projectionRatio * segmentLengthMeters;
     }
 
     private static INode connStartNode(VehicleData vd) {
@@ -531,8 +524,11 @@ public class ObuControlCore {
         return vd.getRoadPosition().getConnection().getEndNode();
     }
 
+    /**
+     * 判斷目前是否仍有有效的緊急資訊可用。
+     * @return true 表示緊急資訊仍在有效期內；false 表示已過期或尚未接收
+     */
     private boolean isEmergencyInfoAlive() {
         return lastEmergency != null && (simTime - lastEmergency.recvSimTime) <= EMERGENCY_INFO_TTL;
     }
-
 }

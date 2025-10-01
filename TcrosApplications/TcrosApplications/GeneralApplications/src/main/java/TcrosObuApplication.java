@@ -14,6 +14,7 @@ import org.eclipse.mosaic.fed.application.app.api.os.VehicleOperatingSystem;
 import org.eclipse.mosaic.interactions.communication.V2xMessageTransmission;
 import org.eclipse.mosaic.interactions.vehicle.VehicleLaneChange;
 import org.eclipse.mosaic.lib.enums.AdHocChannel;
+import org.eclipse.mosaic.lib.enums.VehicleClass;
 import org.eclipse.mosaic.lib.geo.GeoCircle;
 import org.eclipse.mosaic.lib.objects.v2x.MessageRouting;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
@@ -29,6 +30,11 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     private static final int GEO_BOARD_CAST_RADIUS = 200;
     private ObuControlCore obuControlCore;
     private RealTimeReferencePoint timeReferencePoint;
+    //避讓
+    private Integer lastLaneIdx = null;      // 上一個 tick 的 laneIndex（做 diff 用）
+    private Integer lastChangeTarget = null; // 這次要求的目標 laneIndex
+    private Long    lastChangeWhen = null;   // 這次換道預計執行的模擬時間（ns）
+    private String  lastChangeConnId = null; // 下指令當下所屬的 connection，驗證時需一致
     public TcrosObuApplication(){
         super(ObuConfiguration.class,"TcrosObuApplication");
     }
@@ -50,11 +56,6 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     public void processEvent(Event event){
         /*No need to implement currently*/
     }
-    //避讓
-    private Integer lastLaneIdx = null;      // 上一個 tick 的 laneIndex（做 diff 用）
-    private Integer lastChangeTarget = null; // 這次要求的目標 laneIndex
-    private Long    lastChangeWhen = null;   // 這次換道預計執行的模擬時間（ns）
-    private String  lastChangeConnId = null; // 下指令當下所屬的 connection，驗證時需一致
 
     @Override
     public void onVehicleUpdated(@Nullable VehicleData vehicleData, @NotNull VehicleData vehicleData1) {
@@ -125,7 +126,6 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         updateLog(vehicleData1);
     }
 
-
     //避讓
     private void tryLaneChange(int delta) {
         if (lastChangeTarget != null){
@@ -185,12 +185,12 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     }
 
     private void updateMessageSend(){
-        if (obuControlCore.needSendSrm()) { sendSrm(); }
-
-        // TODO: 判斷是否為救護車邏輯重寫
-        if (getOs().getVehicleData().getName().equals("veh_4")) { sendEva(); }
+        if (getOs().getVehicleParameters().getInitialVehicleType().getVehicleClass()
+                == VehicleClass.EmergencyVehicle ) {
+            if (obuControlCore.needSendSrm()) { sendSrm(); }
+            sendEva();
+        }
     }
-
 
     private void updateLog(VehicleData newVehicleData){
         getLog().infoSimTime(this,"==================");
@@ -209,6 +209,7 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         getLog().infoSimTime(this,"RouteId:{}" , newVehicleData.getRouteId());
         getLog().infoSimTime(this,"==================");
     }
+
     private void sendSrm(){
         final MessageRouting routing = getOperatingSystem()
                 .getAdHocModule()
