@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2025-08-24 18:22:07 by Eclipse SUMO netedit Version 1.22.0
+-->
+
+<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
+    <!-- Shapes -->
+    <poi id="A00" icon="pin" color="yellow" layer="202.00" lon="121.535320" lat="25.041951"/>
+    <poi id="A01" icon="pin" color="yellow" layer="202.00" lon="121.532819" lat="25.042341"/>
+    <poi id="A02" icon="pin" color="yellow" layer="202.00" lon="121.530692" lat="25.042929"/>
+    <poi id="A03" icon="pin" color="yellow" layer="202.00" lon="121.529870" lat="25.043130"/>
+    <poi id="A04" icon="pin" color="yellow" layer="202.00" lon="121.528790" lat="25.043413"/>
+    <poi id="A05" icon="pin" color="yellow" layer="202.00" lon="121.526775" lat="25.043975"/>
+    <poi id="A06" icon="pin" color="yellow" layer="202.00" lon="121.525100" lat="25.044399"/>
+    <poi id="A07" icon="pin" color="yellow" layer="202.00" lon="121.523842" lat="25.046275"/>
+    <poi id="A08" icon="pin" color="yellow" layer="202.00" lon="121.523430" lat="25.044792"/>
+    <poi id="A09" icon="pin" color="yellow" layer="202.00" lon="121.521683" lat="25.045211"/>
+    <poi id="A10" icon="pin" color="yellow" layer="202.00" lon="121.522910" lat="25.043576"/>
+    <poi id="A11" icon="pin" color="yellow" layer="202.00" lon="121.522531" lat="25.042378"/>
+    <poi id="A12" icon="pin" color="yellow" layer="202.00" lon="121.522141" lat="25.040975"/>
+    <poi id="A13" icon="pin" color="yellow" layer="202.00" lon="121.524308" lat="25.041955"/>
+    <poi id="A14" icon="pin" color="yellow" layer="202.00" lon="121.526066" lat="25.041516"/>
+    <poi id="A15" icon="pin" color="yellow" layer="202.00" lon="121.529215" lat="25.040892"/>
+    <poi id="A16" icon="pin" color="yellow" layer="202.00" lon="121.531089" lat="25.040442"/>
+    <poi id="A17" icon="pin" color="yellow" layer="202.00" lon="121.532836" lat="25.040256"/>
+</additional>

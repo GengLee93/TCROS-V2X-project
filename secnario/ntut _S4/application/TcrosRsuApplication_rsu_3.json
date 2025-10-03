@@ -1,0 +1,27 @@
+{
+  "label": "A03",
+  "priorityStartTime": 0,
+  "priorityEndTime": 999,
+  "trafficLightInfoList": [
+    {
+      "id": "tl_133",
+      "tlGroup": "655375248",
+      "nodeId": "655375248"
+    },
+    {
+      "id": "tl_134",
+      "tlGroup": "655375249",
+      "nodeId": "655375249"
+    },
+    {
+      "id": "tl_143",
+      "tlGroup": "655375578",
+      "nodeId": "655375578"
+    },
+    {
+      "id": "tl_142",
+      "tlGroup": "655375574",
+      "nodeId": "655375574"
+    }
+  ]
+}
