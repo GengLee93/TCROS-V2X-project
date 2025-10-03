@@ -1,0 +1,22 @@
+{
+  "label": "A10",
+  "priorityStartTime" : 0,
+  "priorityEndTime" : 999,
+  "trafficLightInfoList": [
+    {
+      "id" : "tl_12",
+      "tlGroup": "1144509827",
+      "nodeId": "1144509827"
+    },
+    {
+      "id" : "tl_17",
+      "tlGroup": "1144509925",
+      "nodeId": "1144509925"
+    },
+    {
+      "id" : "tl_32",
+      "tlGroup": "2076095512",
+      "nodeId": "2076095512"
+    }
+  ]
+}

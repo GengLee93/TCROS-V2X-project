@@ -1,0 +1,10 @@
+<configuration>
+	<input>
+		<net-file value="D_City_map.net.xml" />
+		<route-files value="D_City_map.rou.xml" />
+	</input>
+	<time>
+		<begin value="0" />
+		<end value="1000" />
+	</time>
+</configuration>

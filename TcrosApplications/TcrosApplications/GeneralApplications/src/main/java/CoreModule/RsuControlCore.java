@@ -1,5 +1,7 @@
 package CoreModule;
 
+import CommonClass.EventWrapper.RsaEventWrapper;
+import CommonClass.RsaClass.*;
 import CommonClass.SrmAssertedType;
 import CommonClass.SrmClass.Requestor;
 import CommonClass.SrmClass.Requests;
@@ -7,11 +9,7 @@ import CommonClass.SsmClass.SigStatus;
 import CommonClass.SsmClass.Status;
 import CommonClass.TimeQueueManager;
 import CommonClass.TimerQueueEntry;
-import CommonClass.EventWrapper.RsaEventWrapper;
-import CommonEnum.ITISCode;
-import CommonEnum.RequestStatus;
-import CommonEnum.RequestType;
-import CommonEnum.RsaPriority;
+import CommonEnum.*;
 import CommonUtil.ObjectExportUtil;
 import CommonUtil.TcrosBuilder.MapDataBuilder;
 import CommonUtil.TcrosBuilder.SpatBuilder;
@@ -575,29 +573,33 @@ public class RsuControlCore {
     }
 
     /**
-     * @param message EVA 消息n
+     * @param message EVA 消息
      * 分析緊急情況，生成相應的 RSA
      */
     private void handleEVA(TcrosProtocolV2xMessage<EmergencyVehicleAlert> message) {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
         String eventId = "EVA_" + eva.id();
 
-        // TODO: 需要判斷 msgCnt
-        if (!isFreshMsg(eva.id(), eva.rsaMsg().msgCnt(), simTime)) {
-            return;
-        }
-
+        // TODO:  msgCnt 判斷邏輯需要更嚴謹
+        if (!isFreshMsg(eva.id(), eva.rsaMsg().msgCnt(), simTime)) { return; }
         RsaEventWrapper wrapper = new RsaEventWrapper(
                 eventId,
-                ITISCode.EMERGENCY_VEHICLE,
+                eva.rsaMsg().typeEvent(),
                 eva.rsaMsg().description(),
-                eva.rsaMsg().position().utcTime(),
-                eva.rsaMsg().position().lat(),
-                eva.rsaMsg().position().lon(),
-                eva.rsaMsg().position().elevation(),
-                RsaPriority.PRIORITY_7,
+                eva.rsaMsg().priority(),
                 eva.rsaMsg().heading(),
-                eva.rsaMsg().extent()
+                eva.rsaMsg().extent(),
+                eva.rsaMsg().position().utcTime(),
+                eva.rsaMsg().position().lon(),
+                eva.rsaMsg().position().lat(),
+                eva.rsaMsg().position().elevation(),
+
+                Optional.ofNullable(eva.rsaMsg().position().heading()),
+                Optional.ofNullable(eva.rsaMsg().position().speed()),
+                Optional.ofNullable(eva.rsaMsg().position().posAccuracy()),
+                Optional.ofNullable(eva.rsaMsg().position().timeConfidence()),
+                Optional.ofNullable(eva.rsaMsg().position().posConfidence()),
+                Optional.ofNullable(eva.rsaMsg().position().speedConfidence())
         );
 
         if (rsaTimeQueueManager.isKeyInQueue(RSA_QUEUE, eventId)) {
@@ -635,21 +637,60 @@ public class RsuControlCore {
     }
 
     public RoadSideAlert createRsa(long simOffsetTimeMs) {
-        rsaTimeQueueManager.updateAllQueue();
-        rsaTimeQueueManager.removeAllExpired();
-
         return rsaTimeQueueManager.getTimeQueue(RSA_QUEUE).values().stream()
                 .map(TimerQueueEntry::getMessage)
                 .sorted(Comparator.comparing(wrapper -> wrapper.priority(), Comparator.reverseOrder()))
                 .findFirst()
-                .map(wrapper -> new RsaBuilder(simOffsetTimeMs)
-                        .setMsgCnt(nextRsaMsgCnt())
-                        .setTypeEvent(wrapper.type())
-                        .setPriority(wrapper.priority())
-                        .setHeadingBitString(wrapper.headingBitString())
-                        .setExtent(wrapper.extent())
-                        .setPosition(wrapper.utcTime(), wrapper.lon(), wrapper.lat(), wrapper.elevation())
-                        .create())
+                .map(wrapper -> {
+                    RsaBuilder rsaBuilder = new RsaBuilder(simOffsetTimeMs)
+                            .setMsgCnt(nextRsaMsgCnt())
+                            .setTypeEvent(wrapper.typeEvent())
+                            .setPriority(wrapper.priority())
+                            .setHeadingBitString(wrapper.headingBitString())
+                            .setExtent(wrapper.extent());
+
+                    // Add descriptions if available
+                    if (wrapper.description() != null && !wrapper.description().isEmpty()) {
+                        for(ITISCode addMessage: wrapper.description()) {
+                            rsaBuilder.addDescription(addMessage);
+                        }
+                    }
+
+                    // Add optional parameters if they are present
+                    if (wrapper.headingDegree().isPresent()) {
+                        rsaBuilder.setHeadingDegree(wrapper.headingDegree().get());
+                    }
+
+                    rsaBuilder.setPosition(wrapper.utcTime(), wrapper.lon(), wrapper.lat(), wrapper.elevation());
+
+                    if (wrapper.speedInfo().isPresent()) {
+                        SpeedInfo speedInfo = wrapper.speedInfo().get();
+                        rsaBuilder.setSpeed(speedInfo.transmission(), (double)speedInfo.speed() * 0.02);
+                    }
+
+                    if (wrapper.posAccuracy().isPresent()) {
+                        PosAccuracy accuracy = wrapper.posAccuracy().get();
+                        rsaBuilder.setAccuracy(accuracy.semiMajor(), accuracy.semiMinor(), accuracy.orientation());
+                    }
+
+                    if (wrapper.posAccuracy().isPresent()) {
+                        PosAccuracy accuracy = wrapper.posAccuracy().get();
+                        rsaBuilder.setAccuracy(accuracy.semiMajor(), accuracy.semiMinor(), accuracy.orientation());
+                    }
+                    TimeConfidence timeConf = wrapper.timeConfidence().orElse(null);
+                    PosConfidence posConf = wrapper.posConfidence().orElse(null);
+                    SpeedConfidence speedConf = wrapper.speedConfidence().orElse(null);
+
+                    PosLevel posLevel = posConf != null ? posConf.pos() : null;
+                    ElevationLevel elevLevel = posConf != null ? posConf.elevation() : null;
+                    HeadingConfidence headingConf = speedConf != null ? speedConf.heading() : null;
+                    SpeedLevel speedLevel = speedConf != null ? speedConf.speed() : null;
+                    ThrottleConfidence throttleConf = speedConf != null ? speedConf.throttle() : null;
+
+                    rsaBuilder.setConfidence(timeConf, posLevel, elevLevel, headingConf, speedLevel, throttleConf);
+
+                    return rsaBuilder.create();
+                })
                 .orElse(null);
     }
 
@@ -667,7 +708,6 @@ public class RsuControlCore {
                 .map(entry -> entry.getMessage().eventId()) // RsaEventWrapper 的 eventId
                 .toList();
     }
-
 
     public void addRsaRecord(RoadSideAlert rsa) { rsaSentRecords.add(rsa); }
 
