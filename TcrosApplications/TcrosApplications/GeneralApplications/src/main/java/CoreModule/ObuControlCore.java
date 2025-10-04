@@ -17,13 +17,10 @@ import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.eclipse.mosaic.fed.application.ambassador.SimulationKernel;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
 import org.eclipse.mosaic.lib.objects.road.INode;
-import org.eclipse.mosaic.lib.objects.road.IRoadPosition;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleRoute;
 import org.eclipse.mosaic.rti.TIME;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -34,17 +31,14 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class ObuControlCore {
-    private static final Logger log = LoggerFactory.getLogger(ObuControlCore.class);
     private final Path logPath;                    // 日誌儲存路徑
 
     // ==================== 車輛識別與狀態 ====================
     private final int vehicleId;                   // 車輛唯一識別碼
     private Double heading;                        // 車輛行進方向（角度）
-    private final String evaVehicleId;             // 緊急車輛識別碼（若為EVA）
 
     // ==================== 全局模擬時間位置 ===================
     private Long simTime;                          // 模擬時間戳
-    private GeoPoint currentPoint;                 // 當前地理位置
 
     // ==================== 廣播控制時間 ====================
     private final Long stopBroadcastStartTime;     // 停止廣播起始時間
@@ -66,11 +60,14 @@ public class ObuControlCore {
     private TimerQueueEntry<V2XMapData> mapTimer;        // MAP 訊息計時器
 
     // ==================== 路線與節點資訊 ====================
+    private GeoPoint currentPoint;                 // 當前地理位置
     private INode upcomingNode;                   // 即將抵達的節點
     private INode previousNode;                   // 剛通過的節點
     private VehicleRoute vehicleRoute;            // 車輛路線資訊
     private final List<String> routeConnections;  // 路線連接資訊
-    private int routeLanesIndex;                  // 當前車道索引
+    private int currentLaneIndex;                 // 當前車輛處在的車道
+    private int totalLanesCount;                  // 當前路線車道總數
+    private int routeLanesIndex;                  // 整條 route 中的 第幾段 connection 的索引位置
 
     // ==================== 模擬常數 ====================
     private static final int RECEIVED_TIME_OUT_LIMIT = 5; // 接收超時限制（秒）
@@ -78,8 +75,10 @@ public class ObuControlCore {
 
     // ==================== 避讓動作狀態 ====================
     private final Set<String> yieldedToEvIds = new HashSet<>();
-    public enum YieldAction { CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, NONE }
+    public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, NONE }
     private YieldAction lastYieldAction = YieldAction.NONE; // 上一次執行的避讓動作
+    EvPassingDetector detector = new EvPassingDetector();
+    private final Map<String, EvPassingDetector> evDetectors = new HashMap<>();
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
@@ -94,6 +93,8 @@ public class ObuControlCore {
         vehicleRoute = null;
         currentPoint = null;
         routeConnections = new ArrayList<>();
+        totalLanesCount = 0;
+        currentLaneIndex = -1;
         routeLanesIndex = -1;
         spatTimer = TimerQueueEntry.emptyEntry();
         mapTimer = TimerQueueEntry.emptyEntry();
@@ -101,13 +102,96 @@ public class ObuControlCore {
         ssmRecords = new ArrayList<>();
         drivingRecords = new ArrayList<>();
         evaRecords = new ArrayList<>();
-        evaVehicleId = vid;
+    }
+
+    public static class EvPassingDetector {
+        double forward = Double.MAX_VALUE;
+        double lateral =  Double.MAX_VALUE;
+        private double previousForwardComponent = Double.NaN;       // 前一次緊急車輛的相對位置
+        public enum RelativePosition { FRONT, BACK, LEFT, RIGHT }   // 緊急車輛相對位置狀態
+
+        // 以自身座標為原點，透過向量取得與緊急車輛的相對位置
+        public RelativePosition getRelativePosition(GeoPoint myPos, double myHeading, GeoPoint evPos) {
+            System.out.println("Heading: %.2f" + myHeading);
+            double hx = Math.cos(Math.toRadians(myHeading));
+            double hy = Math.sin(Math.toRadians(myHeading));
+
+            double vx = evPos.getLongitude() - myPos.getLongitude();
+            double vy = evPos.getLatitude() - myPos.getLatitude();
+
+            forward = vx * hx + vy * hy;
+            lateral = -vx * hy + vy * hx;
+//            System.out.printf("vx=%.6f, vy=%.6f, hx=%.6f, hy=%.6f, forward=%.6f\n", vx, vy, hx, hy, forward);
+            if (Math.abs(forward) > Math.abs(lateral)) {
+                return forward > 0 ? RelativePosition.FRONT : RelativePosition.BACK;
+            } else {
+                return lateral > 0 ? RelativePosition.LEFT : RelativePosition.RIGHT;
+            }
+        }
+
+        // 緊急車輛已經通過自身車輛
+        public boolean hasPassed(GeoPoint myPos, double myHeading, GeoPoint evPos) {
+            double hx = Math.cos(Math.toRadians(myHeading));
+            double hy = Math.sin(Math.toRadians(myHeading));
+
+            double vx = evPos.getLongitude() - myPos.getLongitude();
+            double vy = evPos.getLatitude() - myPos.getLatitude();
+
+            double forward = vx * hx + vy * hy;
+
+            boolean passed = !Double.isNaN(previousForwardComponent)
+                    && previousForwardComponent < 0 && forward > 0;
+
+            previousForwardComponent = forward;
+            return passed;
+        }
+
+        public boolean isFrontend(GeoPoint myPos, double myHeading, GeoPoint evPos) {
+            double hx = Math.cos(Math.toRadians(myHeading));
+            double hy = Math.sin(Math.toRadians(myHeading));
+            double vx = evPos.getLongitude() - myPos.getLongitude();
+            double vy = evPos.getLatitude() - myPos.getLatitude();
+            forward = vx * hx + vy * hy;
+            return forward > 0;
+        }
+
+        public boolean isBehind(GeoPoint myPos, double myHeading, GeoPoint evPos) {
+            double hx = Math.cos(Math.toRadians(myHeading));
+            double hy = Math.sin(Math.toRadians(myHeading));
+            double vx = evPos.getLongitude() - myPos.getLongitude();
+            double vy = evPos.getLatitude() - myPos.getLatitude();
+            forward = vx * hx + vy * hy;
+            return forward < 0;
+        }
+
+        public boolean isLeftOfMe(GeoPoint myPos, double myHeading, GeoPoint evPos) {
+            double hx = Math.cos(Math.toRadians(myHeading));
+            double hy = Math.sin(Math.toRadians(myHeading));
+            double vx = evPos.getLongitude() - myPos.getLongitude();
+            double vy = evPos.getLatitude() - myPos.getLatitude();
+            double lateral = -vx * hy + vy * hx;
+            return lateral > 0;
+        }
+
+        public boolean isRightOfMe(GeoPoint myPos, double myHeading, GeoPoint evPos) {
+            double hx = Math.cos(Math.toRadians(myHeading));
+            double hy = Math.sin(Math.toRadians(myHeading));
+            double vx = evPos.getLongitude() - myPos.getLongitude();
+            double vy = evPos.getLatitude() - myPos.getLatitude();
+            double lateral = -vx * hy + vy * hx;
+            return lateral < 0;
+        }
+
+        // 清除狀態紀錄
+        public void reset() { previousForwardComponent = Double.NaN; }
     }
 
     public void updateVehicleData(@NotNull VehicleData newVehicleData,Long sTime) {
         simTime = sTime;
         speedRecords.add(newVehicleData.getSpeed());
         currentPoint = newVehicleData.getPosition();
+        currentLaneIndex = newVehicleData.getRoadPosition().getLaneIndex();
+        totalLanesCount = newVehicleData.getRoadPosition().getConnection().getLanes();
         INode nextNode = newVehicleData.getRoadPosition().getConnection().getEndNode();
         if(!Objects.equals(upcomingNode, nextNode)){
             if(upcomingNode != null) {
@@ -251,58 +335,74 @@ public class ObuControlCore {
     }
 
     private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message) {
-        RoadSideAlert rsa = message.getTcrosProtocol();
-        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
-            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
-                    , rsa.position().lon() / 1e7);
-            String evId = "RSA_" + rsa.msgCnt();
-            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, evId);
-        }
+//        RoadSideAlert rsa = message.getTcrosProtocol();
+//        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+//            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
+//                    , rsa.position().lon() / 1e7);
+////            String evId = "RSA_" + rsa.msgCnt();
+//            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, null);
+//        }
     }
 
     private void handleEmergencyVehicle(GeoPoint evPosition, Double evHeading, String evId) {
-        // 避免重複避讓
-        if (hasAlreadyYieldedTo(evId)) {
-            System.out.println("[ControlCore] veh_%d: Already yielded to EV: " + evId);
-            return;
-        }
         if (evPosition == null || currentPoint == null || heading == null || evHeading == null) {
             lastYieldAction = YieldAction.NONE;
             return;
         }
 
+//        boolean passed = detector.hasPassed(currentPoint, heading, evPosition);
+        EvPassingDetector.RelativePosition pos = detector.getRelativePosition(currentPoint, heading, evPosition);
+//        System.out.println("EV 目前在我 " + pos);
+//        if (passed) {
+//            detector.reset();
+//            System.out.println("EV 已成功超車！");
+//        }
+//        else { System.out.println("EV 目前在我 " + pos); }
+
         double distance = currentPoint.distanceTo(evPosition);  // 自身與緊急車輛的距離
         double headingDiff = Math.abs(heading - evHeading);     // 自身車輛與緊急車輛的角度差異
 
-        if (distance > 100 || headingDiff > 30) { lastYieldAction = YieldAction.NONE; }
-        else if (canChangeLaneLeft()) { lastYieldAction = YieldAction.CHANGE_LANE_LEFT; }
-        else if (canChangeLaneRight()) { lastYieldAction = YieldAction.CHANGE_LANE_RIGHT; }
-        else { lastYieldAction = YieldAction.STOP; }
-        yieldedToEvIds.add(evId);
-    }
-    private boolean canChangeLaneLeft() { }
-    private boolean canChangeLaneRight() { }
+        if (distance > 100 || headingDiff > 90) {               // 與事件無關
+            System.out.println("與事件無關");
+            lastYieldAction = YieldAction.NONE;
+            return;
+        }
 
-    private boolean hasAlreadyYieldedTo(String evId) {
-        boolean inSight = false;
-        // TODO: 判斷是否已經在車輛視界
-
-
-        return yieldedToEvIds.contains(evId) && inSight;
-    }
-
-    public void markYieldedTo(String evId) { yieldedToEvIds.add(evId); }
-
-    public YieldAction getLastYieldAction() { return lastYieldAction; }
-
-    private boolean hasToYield(String evId) { return !hasAlreadyYieldedTo(evId); }
-
-    public void clearYieldMemoryIfEvGone(String evId, GeoPoint evPosition) {
-        double distance = currentPoint.distanceTo(evPosition);
-        if (distance > 150) {
-            yieldedToEvIds.remove(evId);
+        if (detector.isFrontend(currentPoint, heading, evPosition)) {    // 緊急車輛在自身車輛的前方
+            lastYieldAction = YieldAction.NONE;
+            System.out.println("EV 在前方");
+        } else if (detector.isBehind(currentPoint, heading, evPosition)) {
+            System.out.println("EV 在後方");
+            if (totalLanesCount == 1) {                         // 緊急車輛在後方且是單線道，一般車輛就臨停路邊
+                lastYieldAction = YieldAction.STOP;
+            } else if (Math.abs(detector.lateral) < 1) {
+                System.out.println(detector.lateral);
+                if (canChangeLaneLeft()) { lastYieldAction = YieldAction.CHANGE_LANE_LEFT; }
+                else if (canChangeLaneRight()) { lastYieldAction = YieldAction.CHANGE_LANE_RIGHT; }
+            }
+            else {
+                lastYieldAction = YieldAction.NONE;
+            }
         }
     }
+    private boolean canChangeLaneLeft() { return  currentLaneIndex < (totalLanesCount - 1); }
+    private boolean canChangeLaneRight() { return currentLaneIndex > 0; }
+
+//    private boolean hasAlreadyYieldedTo(String evId) {
+////         TODO: 判斷是否已經在車輛視界
+//        return yieldedToEvIds.contains(evId);
+//    }
+//
+    public YieldAction getLastYieldAction() { return lastYieldAction; }
+//
+//    public void markYieldedTo(String evId) { yieldedToEvIds.add(evId); }
+//
+//    public void clearYieldMemoryIfEvGone(String evId, GeoPoint evPosition) {
+//        double distance = currentPoint.distanceTo(evPosition);
+//        if (distance > 150) {
+//            yieldedToEvIds.remove(evId);
+//        }
+//    }
 
     public SignalRequestMessage createSRM(long simOffsetTimeMs){
         if(currentPoint != null) {
@@ -329,9 +429,7 @@ public class ObuControlCore {
         return null;
     }
 
-    public void addSrmRecord(SignalRequestMessage srm){
-        srmRecords.add(srm);
-    }
+    public void addSrmRecord(SignalRequestMessage srm){ srmRecords.add(srm); }
 
     private int nextEvaMsgCnt() {
         int current = evaMsgCnt;
@@ -341,14 +439,14 @@ public class ObuControlCore {
 
     public boolean needSendEva() {
         // TODO: 未實做
-        return needSendSrm();
+        return false;
     }
 
     public EmergencyVehicleAlert createEva(long simOffsetTimeMs) {
         EvaBuilder evaBuilder = new EvaBuilder(simOffsetTimeMs);
 
         // 車輛 ID 與基本類型
-        evaBuilder.setId(evaVehicleId);
+        evaBuilder.setId("" + vehicleId);
         evaBuilder.setBasicType(BasicType.special);
 
         // 經緯度轉換為 J2735 格式（1/10 微度）
@@ -445,8 +543,13 @@ public class ObuControlCore {
         }
     }
 
-    public GeoPoint getCurrentPoint(){
-        return currentPoint;
+    public GeoPoint getCurrentPoint(){ return currentPoint; }
+
+    public OptionalLong getTotalDrivingDurationSeconds() {
+        if (drivingRecords.size() < 2) return OptionalLong.empty();
+        long start = drivingRecords.get(0).sTime();
+        long end = drivingRecords.get(drivingRecords.size() - 1).sTime();
+        return OptionalLong.of(end - start);
     }
 
     public void exportSentMessage() throws IOException {
@@ -454,13 +557,6 @@ public class ObuControlCore {
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,srmRecords);
         outputFile = logPath.resolve("EvaRecords.json").toFile();
         ObjectExportUtil.exportTcrosBaseMessage(outputFile,evaRecords);
-    }
-
-    public OptionalLong getTotalDrivingDurationSeconds() {
-        if (drivingRecords.size() < 2) return OptionalLong.empty();
-        long start = drivingRecords.get(0).sTime();
-        long end = drivingRecords.get(drivingRecords.size() - 1).sTime();
-        return OptionalLong.of(end - start);
     }
 
     public void exportDrivingRecords() throws IOException {
