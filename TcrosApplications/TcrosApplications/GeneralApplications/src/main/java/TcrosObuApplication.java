@@ -158,17 +158,17 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
             }
             case CHANGE_LANE_LEFT -> {
                 getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_LEFT, 1_000_000_000L);
-                log.info("Left lane change successful");
+                log.info(String.format("Vehicle ID %s: Left lane change successful", getOs().getId()));
             }
             case CHANGE_LANE_RIGHT -> {
                 getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_RIGHT, 5_000_000_000L);
-                log.info("Right lane change successful");
+                log.info(String.format("Vehicle ID %s: Right lane change successful", getOs().getId()));
             }
             case STOP -> {
                 getOs().stopNow(VehicleStopMode.PARK_ON_ROADSIDE, 3_000_000_000L);
-                log.info("Acceleration failed, pulling over to stop");
+                log.info(String.format("Vehicle ID %s: Acceleration failed, pulling over to stop", getOs().getId()));
             }
-            case NONE -> log.info("No Yield Action");
+            case NONE -> log.info(String.format("Vehicle ID %s: No Yield Action", getOs().getId()));
         }
     }
 
