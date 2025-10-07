@@ -76,7 +76,7 @@ public class ObuControlCore {
 
     // ==================== 避讓動作狀態 ====================
     private final Set<String> yieldedToEvIds = new HashSet<>();
-    public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, NONE }
+    public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, RESUME, NONE }
     private YieldAction lastYieldAction = YieldAction.NONE; // 上一次執行的避讓動作
     EvPassingDetector detector = new EvPassingDetector();
     private final Map<String, EvPassingDetector> evDetectors = new HashMap<>();
