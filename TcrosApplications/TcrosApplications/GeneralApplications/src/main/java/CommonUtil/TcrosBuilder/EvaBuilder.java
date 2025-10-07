@@ -100,14 +100,4 @@ public class EvaBuilder {
         this.basicTypes = basicType;
         return this;
     }
-
-    public EvaBuilder setSenderConnectionId(String connId) {
-        this.rsaBuilder.setSenderConnectionId(connId);
-        return this;
-    }
-
-    public EvaBuilder setSenderLaneIndex(Integer laneIdx) {
-        this.rsaBuilder.setSenderLaneIndex(laneIdx);
-        return this;
-    }
 }

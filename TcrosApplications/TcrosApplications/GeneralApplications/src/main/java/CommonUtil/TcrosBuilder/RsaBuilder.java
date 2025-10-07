@@ -30,10 +30,6 @@ public class RsaBuilder {
     private PosConfidence posConfidence;
     private SpeedConfidence speedConfidence;
 
-    // TODO: 未來要將這不屬於 RSA 物件拿掉
-    private String senderConnectionId;
-    private Integer senderLaneIndex;
-
     public RsaBuilder(long now) {
         this.now = now;
         description = new ArrayList<>();
@@ -60,9 +56,7 @@ public class RsaBuilder {
                 priority,
                 headingBitString,
                 extent,
-                position,
-                senderConnectionId,   // ★ 帶入
-                senderLaneIndex
+                position
         );
     }
 
@@ -209,18 +203,6 @@ public class RsaBuilder {
                 speedC != null ? speedC : SpeedLevel.UNAVAILABLE,
                 throttleC != null ? throttleC : ThrottleConfidence.UNAVAILABLE
         );
-        return this;
-    }
-
-    // TODO: 未來要將這不屬於 RSA 物件拿掉
-    public RsaBuilder setSenderConnectionId(String connId) {
-        this.senderConnectionId = connId;
-        return this;
-    }
-
-    // TODO: 未來要將這不屬於 EVA 物件拿掉
-    public RsaBuilder setSenderLaneIndex(Integer laneIdx) {
-        this.senderLaneIndex = laneIdx;
         return this;
     }
 }

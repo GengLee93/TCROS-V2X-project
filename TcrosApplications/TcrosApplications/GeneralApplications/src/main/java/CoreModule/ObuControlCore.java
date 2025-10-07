@@ -2,7 +2,6 @@ package CoreModule;
 
 import CommonClass.DrivingRecord;
 import CommonClass.EvaClass.*;
-import CommonClass.RsaClass.*;
 import CommonClass.SrmClass.Requests;
 import CommonClass.TimerQueueEntry;
 import CommonEnum.*;
@@ -18,8 +17,6 @@ import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.eclipse.mosaic.fed.application.ambassador.SimulationKernel;
 import org.eclipse.mosaic.lib.geo.GeoPoint;
 import org.eclipse.mosaic.lib.objects.road.INode;
-import org.eclipse.mosaic.lib.objects.road.IRoadPosition;
-import org.eclipse.mosaic.lib.objects.road.*;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleRoute;
 import org.eclipse.mosaic.rti.TIME;
@@ -79,31 +76,18 @@ public class ObuControlCore {
 
     // ==================== 避讓動作狀態 ====================
     private final Set<String> yieldedToEvIds = new HashSet<>();
-    public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, RESUME, NONE }
+    public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, NONE }
     private YieldAction lastYieldAction = YieldAction.NONE; // 上一次執行的避讓動作
     EvPassingDetector detector = new EvPassingDetector();
     private final Map<String, EvPassingDetector> evDetectors = new HashMap<>();
-
-    //給切換的預設值
-    private Integer pendingLaneChangeDelta = null; // -1=向右, +1=向左
-    private Integer currentLaneIndex = null;
-    private String  currentConnectionId = null;
-
-    private static final double AHEAD_BUFFER_METERS = 5.0; // 超過這個距離才算「確定在前面」
-    private static final long   EMERGENCY_INFO_TTL  = 5 * TIME.SECOND; // 緊急資訊有效時間
-
-    // 目前所在 connection 的起點/終點（每次 onVehicleUpdated 會更新）
-    private GeoPoint currentConnStart = null;
-    private GeoPoint currentConnEnd = null;
-
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
         vehicleId = Integer.parseInt(vid.substring(vid.indexOf("_")+1));
         stopBroadcastStartTime = configuration.stopBroadcastStartTime * TIME.SECOND;
         stopBroadcastEndTime = configuration.stopBroadcastEndTime * TIME.SECOND;
-        errorSrmBroadcastStartTime = configuration.errorSrmBroadcastStartTime * TIME.SECOND;
         errorSrmBroadcastEndTime = configuration.errorSrmBroadcastEndTime * TIME.SECOND;
+        errorSrmBroadcastStartTime = configuration.stopBroadcastStartTime * TIME.SECOND;
         speedRecords = new ArrayList<>();
         upcomingNode = null;
         previousNode = null;
@@ -212,7 +196,7 @@ public class ObuControlCore {
         public void reset() { previousForwardComponent = Double.NaN; }
     }
 
-    public void updateVehicleData(@NotNull VehicleData newVehicleData, Long sTime) {
+    public void updateVehicleData(@NotNull VehicleData newVehicleData,Long sTime) {
         simTime = sTime;
         speedRecords.add(newVehicleData.getSpeed());
         currentPoint = newVehicleData.getPosition();
@@ -233,6 +217,7 @@ public class ObuControlCore {
             spatTimer.updateTimer();
         }
         updateRouteInfo(newVehicleData);
+        heading = newVehicleData.getHeading();
     }
 
     private void updateRouteInfo(@NotNull VehicleData vehicleData){
@@ -279,11 +264,11 @@ public class ObuControlCore {
         previousNode = upcomingNode;
         upcomingNode = nextNode;
         if( !spatTimer.isEmpty() &&
-            !spatTimer.getMessage().containNode(nextNode.getId())){
+                !spatTimer.getMessage().containNode(nextNode.getId())){
             spatTimer = TimerQueueEntry.emptyEntry();
         }
         if( !mapTimer.isEmpty() &&
-            !mapTimer.getMessage().containNode(nextNode.getId())) {
+                !mapTimer.getMessage().containNode(nextNode.getId())) {
             mapTimer = TimerQueueEntry.emptyEntry();
         }
     }
@@ -308,8 +293,8 @@ public class ObuControlCore {
     private boolean inErrorDuration(){return simTime >= errorSrmBroadcastStartTime && simTime <= errorSrmBroadcastEndTime; }
     private boolean needSendUpcomingRequest(){
         return upcomingNode != null &&
-               !spatTimer.isEmpty() && !mapTimer.isEmpty() &&
-               !spatTimer.isExpired() && !mapTimer.isExpired();
+                !spatTimer.isEmpty() && !mapTimer.isEmpty() &&
+                !spatTimer.isExpired() && !mapTimer.isExpired();
     }
     private boolean needSendPreviousRequest(){
         return previousNode != null;
@@ -354,52 +339,35 @@ public class ObuControlCore {
         EmergencyVehicleAlert eva = message.getTcrosProtocol();
         if (eva.rsaMsg().typeEvent() == ITISCode.EMERGENCY_VEHICLE
                 && eva.details().responseType() == ResponseType.emergency) {
-            // TODO: Refactor this logic post-deadline for better separation of concerns
-            String conn = eva.rsaMsg().senderConnectionId();
-            Integer lane = eva.rsaMsg().senderLaneIndex();
-            PositionInfo pos = eva.rsaMsg().position();
-
-            // 從 TCROS::EVA 中提取緊急車輛位置訊息
-            double lat = (pos.lat() == null || pos.lat() == 900000001L) ? 0.0 : pos.lat() / 1e7d;
-            double lon = (pos.lon() == null || pos.lon() == 1800000001L) ? 0.0 : pos.lon() / 1e7d;
-            double alt = (pos.elevation() == null) ? 0.0 : pos.elevation() / 10.0;
-
-            GeoPoint evPos = GeoPoint.latLon(lat, lon, alt);    // 緊急車輛位置
-
-            lastEmergency = new EmergencyContext(conn, lane, evPos, simTime);
-            handleEmergencyVehicle();
+            GeoPoint evPosition = GeoPoint.latLon(eva.rsaMsg().position().lat() / 1e7
+                    , eva.rsaMsg().position().lon() / 1e7);
+            handleEmergencyVehicle(evPosition, eva.rsaMsg().position().heading() * 0.0125,
+                    eva.id());
         }
     }
 
     private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message) {
-        RoadSideAlert rsa = message.getTcrosProtocol();
-        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
-            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
-                    , rsa.position().lon() / 1e7);
-            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, null);
-        }
+//        RoadSideAlert rsa = message.getTcrosProtocol();
+//        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+//            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
+//                    , rsa.position().lon() / 1e7);
+////            String evId = "RSA_" + rsa.msgCnt();
+//            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, null);
+//        }
     }
 
     private void handleEmergencyVehicle(GeoPoint evPosition, Double evHeading, String evId) {
-        if (hasAlreadyYieldedTo(evId)) {
-            System.out.printf("vh%s: has already yielded to vehicle\n", evId);
-            lastYieldAction = YieldAction.NONE;
-            return;
-        }
+        if (hasAlreadyYieldedTo(evId)) { lastYieldAction = YieldAction.NONE; return;}
         if (evPosition == null || currentPoint == null || heading == null || evHeading == null) {
             lastYieldAction = YieldAction.NONE;
             return;
         }
-
-        detector.getRelativePosition(currentPoint, heading, evPosition);
+        EvPassingDetector.RelativePosition pos = detector.getRelativePosition(currentPoint, heading, evPosition);
+//        System.out.println("EV 目前在我 " + pos);
 
         double distance = currentPoint.distanceTo(evPosition);  // 自身與緊急車輛的距離
         double headingDiff = Math.abs(heading - evHeading);     // 自身車輛與緊急車輛的角度差異
 
-        if (distance> 100 && evId == null) {                    // RSA 傳送的路側告警
-            lastYieldAction = YieldAction.COOPERATE;
-            return;
-        }
         if (distance > 100 || headingDiff > 30) {               // 與事件無關
             System.out.printf("vh%d: 與事件無關%n", vehicleId);
             lastYieldAction = YieldAction.NONE;
@@ -450,12 +418,11 @@ public class ObuControlCore {
         return yieldedToEvIds.contains(evId);
     }
 
-//    public void setLastYieldAction(YieldAction lastYieldAction) { this.lastYieldAction = lastYieldAction; }
     public YieldAction getLastYieldAction() { return lastYieldAction; }
 
     public void clearYieldMemoryIfEvGone(String evId, GeoPoint evPosition) {
         double distance = currentPoint.distanceTo(evPosition);
-            yieldedToEvIds.remove(evId);
+        yieldedToEvIds.remove(evId);
     }
 
     public SignalRequestMessage createSRM(long simOffsetTimeMs){
@@ -465,11 +432,11 @@ public class ObuControlCore {
             srmBuilder.setSequenceNumber(inErrorDuration() ? -1 : srmRecords.size());
             if(needSendUpcomingRequest()) {
                 srmBuilder.addUpcomingNodeRequest(
-                    upcomingNode.getId(),
-                    getUpcomingNodeETCms(),
-                    getCurrentLane(),
-                    getNextLane(),
-                    nextUpcomingRequestType()
+                        upcomingNode.getId(),
+                        getUpcomingNodeETCms(),
+                        getCurrentLane(),
+                        getNextLane(),
+                        nextUpcomingRequestType()
                 );
             }
 
@@ -484,27 +451,6 @@ public class ObuControlCore {
     }
 
     public void addSrmRecord(SignalRequestMessage srm){ srmRecords.add(srm); }
-
-    private void handleEmergencyVehicle() {
-        if (!isEmergencyInfoAlive()) return;              // 你的 TTL 檢查
-        if (currentConnectionId == null || currentLaneIndex == null) return;
-
-        EmergencyContext ec = lastEmergency;
-
-        if (!currentConnectionId.equals(ec.connId)) return;
-        if (!Objects.equals(currentLaneIndex, ec.laneIdx)) return;
-
-        if (currentConnStart == null || currentConnEnd == null || currentPoint == null) return;
-
-        double myProg = projectProgressOnConnection(currentConnStart, currentConnEnd, currentPoint);
-        double evProg = projectProgressOnConnection(currentConnStart, currentConnEnd, ec.pos);
-
-        double gap = myProg - evProg;
-        if (gap >= AHEAD_BUFFER_METERS) {
-            // 往右讓 (-1)
-            requestLaneChange(-1);
-        }
-    }
 
     private int nextEvaMsgCnt() {
         int current = evaMsgCnt;
@@ -524,22 +470,23 @@ public class ObuControlCore {
         evaBuilder.setId("" + vehicleId);
         evaBuilder.setBasicType(BasicType.special);
 
+        // 經緯度轉換為 J2735 格式（1/10 微度）
+        long lat10MicroDeg = Math.round(currentPoint.getLatitude() * 10_000_000);
+        long lon10MicroDeg = Math.round(currentPoint.getLongitude() * 10_000_000);
+
+        // 高程轉換為 10cm 單位（若無資料則設為 0）
+        long elevationDeciMeter = Math.round(currentPoint.getAltitude() * 10);
+
+        // RSA 訊息建構
         evaBuilder.rsaBuilder
                 .setMsgCnt(nextEvaMsgCnt())
                 .setTypeEvent(ITISCode.EMERGENCY_VEHICLE)
                 .setPriority(RsaPriority.PRIORITY_7)
-                .setHeadingDegree(hdg)
-                .setPosition(
-                        TimeUtil.toUtcTime(simOffsetTimeMs),
-                        (long)Math.round(currentPoint.getLongitude() * 1e7), // lonE7
-                        (long)Math.round(currentPoint.getLatitude()  * 1e7), // latE7
-                        (long)Math.round(currentPoint.getAltitude()  * 10)   // 0.1m
-                )
-                .setSpeed(TransmissionState.UNAVAILABLE, lastSpeed)
-                //   新增：把 sender 的所在連結/車道放進去
-                .setSenderConnectionId(currentConnectionId)
-                .setSenderLaneIndex(currentLaneIndex);
+                .setHeadingDegree(heading)
+                .setPosition(TimeUtil.toUtcTime(simOffsetTimeMs), lon10MicroDeg, lat10MicroDeg, elevationDeciMeter)
+                .setSpeed(TransmissionState.UNAVAILABLE, speedRecords.get(speedRecords.size() - 1));
 
+        // EVA 額外欄位
         evaBuilder.setResponseType(ResponseType.emergency);
         evaBuilder.setDetails(
                 new Details(
@@ -649,73 +596,5 @@ public class ObuControlCore {
         try (BufferedWriter writer = Files.newBufferedWriter(outputFile.toPath(), StandardCharsets.UTF_8)) {
             mapper.writer(schema).writeValues(writer).writeAll(drivingRecords);
         }
-    }
-
-    //避讓
-    public boolean hasPendingLaneChange() { return pendingLaneChangeDelta != null; }
-
-    public int consumeLaneChangeDelta() {
-        int d = pendingLaneChangeDelta;
-        pendingLaneChangeDelta = null;
-        return d;
-    }
-
-    private void requestLaneChange(int delta) { pendingLaneChangeDelta = delta; }
-
-    private EmergencyContext lastEmergency = null;
-    private record EmergencyContext(
-            String connId,
-            Integer laneIdx,
-            GeoPoint pos,
-            long recvSimTime) {
-    }
-
-    /**
-     * 計算某一點在指定道路連線上的投影進度（以公尺為單位）。
-     *
-     * @param start  道路連線的起點座標
-     * @param end    道路連線的終點座標
-     * @param point  要投影的目標點座標
-     * @return       該點在連線上的投影距離（單位：公尺）
-     */
-    private static double projectProgressOnConnection(GeoPoint start, GeoPoint end, GeoPoint point) {
-        // 取得起點、終點與目標點的經緯度座標
-        double startLon = start.getLongitude(), startLat = start.getLatitude();
-        double endLon = end.getLongitude(), endLat = end.getLatitude();
-        double pointLon = point.getLongitude(), pointLat = point.getLatitude();
-
-        // 計算起點到終點的向量 (dx, dy)
-        double dx = endLon - startLon;
-        double dy = endLat - startLat;
-
-        // 計算起點到目標點的向量 (px, py)
-        double px = pointLon - startLon;
-        double py = pointLat - startLat;
-
-        // 若起點與終點相同，則無法計算投影，直接回傳 0
-        double segmentLengthSquared = dx * dx + dy * dy;
-        if (segmentLengthSquared == 0) { return 0.0; }
-
-        // 計算目標點在連線上的投影比例（0 表示起點，1 表示終點）
-        double projectionRatio = (px * dx + py * dy) / segmentLengthSquared;
-
-        // 將比例轉換為實際距離（單位：公尺）
-        double segmentLengthMeters = start.distanceTo(end);
-        return projectionRatio * segmentLengthMeters;
-    }
-
-    private static INode connStartNode(VehicleData vd) {
-        return vd.getRoadPosition().getConnection().getStartNode();
-    }
-    private static INode connEndNode(VehicleData vd) {
-        return vd.getRoadPosition().getConnection().getEndNode();
-    }
-
-    /**
-     * 判斷目前是否仍有有效的緊急資訊可用。
-     * @return true 表示緊急資訊仍在有效期內；false 表示已過期或尚未接收
-     */
-    private boolean isEmergencyInfoAlive() {
-        return lastEmergency != null && (simTime - lastEmergency.recvSimTime) <= EMERGENCY_INFO_TTL;
     }
 }

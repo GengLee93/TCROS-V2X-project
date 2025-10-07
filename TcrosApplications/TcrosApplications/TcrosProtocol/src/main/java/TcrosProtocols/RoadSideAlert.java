@@ -51,11 +51,7 @@ public record RoadSideAlert(
         Extent extent,
 
         @Description("Geographical position of the event, including coordinates and additional location-related details")
-        PositionInfo position,
-
-        String senderConnectionId,
-
-        Integer senderLaneIndex
+        PositionInfo position
 
 ) implements Serializable {
 }
