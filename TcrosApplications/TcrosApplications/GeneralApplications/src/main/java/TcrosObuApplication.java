@@ -168,6 +168,10 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
                 getOs().stopNow(VehicleStopMode.PARK_ON_ROADSIDE, 3_000_000_000L);
                 log.info(String.format("Vehicle ID %s: Acceleration failed, pulling over to stop", getOs().getId()));
             }
+            case RESUME -> {
+                getOs().resume();
+                log.info(String.format("Vehicle ID %s: Resumed", getOs().getId()));
+            }
             case NONE -> log.info(String.format("Vehicle ID %s: No Yield Action", getOs().getId()));
         }
     }

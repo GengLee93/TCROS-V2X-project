@@ -76,7 +76,7 @@ public class ObuControlCore {
 
     // ==================== 避讓動作狀態 ====================
     private final Set<String> yieldedToEvIds = new HashSet<>();
-    public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, NONE }
+    public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, RESUME, NONE }
     private YieldAction lastYieldAction = YieldAction.NONE; // 上一次執行的避讓動作
     EvPassingDetector detector = new EvPassingDetector();
     private final Map<String, EvPassingDetector> evDetectors = new HashMap<>();
@@ -347,34 +347,34 @@ public class ObuControlCore {
     }
 
     private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message) {
-//        RoadSideAlert rsa = message.getTcrosProtocol();
-//        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
-//            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
-//                    , rsa.position().lon() / 1e7);
-////            String evId = "RSA_" + rsa.msgCnt();
-//            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, null);
-//        }
+        RoadSideAlert rsa = message.getTcrosProtocol();
+        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
+                    , rsa.position().lon() / 1e7);
+            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, null);
+        }
     }
 
     private void handleEmergencyVehicle(GeoPoint evPosition, Double evHeading, String evId) {
-        if (hasAlreadyYieldedTo(evId)) { lastYieldAction = YieldAction.NONE; return;}
+        if (hasAlreadyYieldedTo(evId)) {
+            System.out.printf("vh%s: has already yielded to vehicle\n", evId);
+            lastYieldAction = YieldAction.NONE;
+            return;
+        }
         if (evPosition == null || currentPoint == null || heading == null || evHeading == null) {
             lastYieldAction = YieldAction.NONE;
             return;
         }
 
-//        boolean passed = detector.hasPassed(currentPoint, heading, evPosition);
-        EvPassingDetector.RelativePosition pos = detector.getRelativePosition(currentPoint, heading, evPosition);
-//        System.out.println("EV 目前在我 " + pos);
-//        if (passed) {
-//            detector.reset();
-//            System.out.println("EV 已成功超車！");
-//        }
-//        else { System.out.println("EV 目前在我 " + pos); }
+        detector.getRelativePosition(currentPoint, heading, evPosition);
 
         double distance = currentPoint.distanceTo(evPosition);  // 自身與緊急車輛的距離
         double headingDiff = Math.abs(heading - evHeading);     // 自身車輛與緊急車輛的角度差異
 
+        if (distance> 100 && evId == null) {                    // RSA 傳送的路側告警
+            lastYieldAction = YieldAction.COOPERATE;
+            return;
+        }
         if (distance > 100 || headingDiff > 30) {               // 與事件無關
             System.out.printf("vh%d: 與事件無關%n", vehicleId);
             lastYieldAction = YieldAction.NONE;
