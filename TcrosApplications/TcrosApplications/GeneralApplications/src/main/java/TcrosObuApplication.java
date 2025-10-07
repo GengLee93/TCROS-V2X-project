@@ -5,6 +5,7 @@ import Tcros2MosaicProtocol.TcrosProtocolV2xMessage;
 import TcrosProtocols.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.mosaic.fed.application.ambassador.simulation.VehicleParameters;
 import org.eclipse.mosaic.fed.application.ambassador.simulation.communication.AdHocModuleConfiguration;
 import org.eclipse.mosaic.fed.application.ambassador.simulation.communication.CamBuilder;
 import org.eclipse.mosaic.fed.application.ambassador.simulation.communication.ReceivedAcknowledgement;
@@ -15,6 +16,7 @@ import org.eclipse.mosaic.fed.application.app.api.VehicleApplication;
 import org.eclipse.mosaic.fed.application.app.api.os.VehicleOperatingSystem;
 import org.eclipse.mosaic.interactions.communication.V2xMessageTransmission;
 import org.eclipse.mosaic.interactions.vehicle.VehicleLaneChange;
+import org.eclipse.mosaic.interactions.vehicle.VehicleParametersChange;
 import org.eclipse.mosaic.interactions.vehicle.VehicleSightDistanceConfiguration;
 import org.eclipse.mosaic.lib.enums.AdHocChannel;
 import org.eclipse.mosaic.lib.enums.LaneChangeMode;
@@ -27,6 +29,7 @@ import org.eclipse.mosaic.lib.geo.UtmPoint;
 import org.eclipse.mosaic.lib.objects.v2x.MessageRouting;
 import org.eclipse.mosaic.lib.objects.v2x.V2xMessage;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
+import org.eclipse.mosaic.lib.objects.vehicle.VehicleParameter;
 import org.eclipse.mosaic.lib.util.scheduling.Event;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,8 +37,6 @@ import org.eclipse.mosaic.rti.TIME;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Optional;
-import java.util.OptionalLong;
 
 public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguration, VehicleOperatingSystem>
         implements VehicleApplication, CommunicationApplication {
@@ -261,8 +262,47 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
         if (receivedV2xMessage.getMessage() instanceof TcrosProtocolV2xMessage<?> message) {
             obuControlCore.handleMessage(message);
             writeReceivedMessageLog(message);
+
+            // 分緊急車輛必須執行對應變道邏輯
+            if (getOs().getVehicleParameters().getInitialVehicleType().getVehicleClass()
+                    != VehicleClass.EmergencyVehicle) {
+                if (message.getProtocolClassName().equals(RoadSideAlert.class.getName()) ||
+                    message.getProtocolClassName().equals(EmergencyVehicleAlert.class.getName())) {
+                    executeYieldAction(obuControlCore.getLastYieldAction());
+                }
+            }
         }
     }
+
+    private void executeYieldAction(ObuControlCore.YieldAction action) {
+        switch (action) {
+            case COOPERATE -> {
+                VehicleParameters.VehicleParametersChangeRequest request =
+                        getOs().requestVehicleParametersUpdate();
+                request.changeLaneChangeMode(LaneChangeMode.COOPERATIVE)
+                        .changeReactionTime(1.2);
+                getOs().applyVehicleParametersChange(request);
+            }
+            case CHANGE_LANE_LEFT -> {
+                getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_LEFT, 1_000_000_000L);
+                log.info(String.format("Vehicle ID %s: Left lane change successful", getOs().getId()));
+            }
+            case CHANGE_LANE_RIGHT -> {
+                getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_RIGHT, 5_000_000_000L);
+                log.info(String.format("Vehicle ID %s: Right lane change successful", getOs().getId()));
+            }
+            case STOP -> {
+                getOs().stopNow(VehicleStopMode.PARK_ON_ROADSIDE, 3_000_000_000L);
+                log.info(String.format("Vehicle ID %s: Acceleration failed, pulling over to stop", getOs().getId()));
+            }
+            case RESUME -> {
+                getOs().resume();
+                log.info(String.format("Vehicle ID %s: Resumed", getOs().getId()));
+            }
+            case NONE -> log.info(String.format("Vehicle ID %s: No Yield Action", getOs().getId()));
+        }
+    }
+
     private void writeReceivedMessageLog(TcrosProtocolV2xMessage<?> message){
         getLog().infoSimTime(this,
                 "Message received, sender:{},type:{}"
