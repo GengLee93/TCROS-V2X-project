@@ -79,7 +79,6 @@ public class ObuControlCore {
     public enum YieldAction { COOPERATE, CHANGE_LANE_LEFT, CHANGE_LANE_RIGHT, STOP, RESUME, NONE }
     private YieldAction lastYieldAction = YieldAction.NONE; // 上一次執行的避讓動作
     EvPassingDetector detector = new EvPassingDetector();
-    private final Map<String, EvPassingDetector> evDetectors = new HashMap<>();
 
     public ObuControlCore(String vid, ObuConfiguration configuration, Path lPath){
         logPath = Path.of(lPath.toString());
@@ -109,7 +108,6 @@ public class ObuControlCore {
         private static final double EARTH_RADIUS = 6378137.0; // WGS84 (meters)
         private double forward = Double.MAX_VALUE;
         private double lateral = Double.MAX_VALUE;
-        private double previousForwardComponent = Double.NaN;
 
         public enum RelativePosition { FRONT, BACK, LEFT, RIGHT }
 
@@ -191,9 +189,6 @@ public class ObuControlCore {
             double lateral = -delta[0] * hy + delta[1] * hx;
             return lateral < 0;
         }
-
-        /** 重置狀態 */
-        public void reset() { previousForwardComponent = Double.NaN; }
     }
 
     public void updateVehicleData(@NotNull VehicleData newVehicleData,Long sTime) {
@@ -347,13 +342,12 @@ public class ObuControlCore {
     }
 
     private void handleRsa(TcrosProtocolV2xMessage<RoadSideAlert> message) {
-//        RoadSideAlert rsa = message.getTcrosProtocol();
-//        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
-//            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
-//                    , rsa.position().lon() / 1e7);
-////            String evId = "RSA_" + rsa.msgCnt();
-//            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, null);
-//        }
+        RoadSideAlert rsa = message.getTcrosProtocol();
+        if (rsa.typeEvent() == ITISCode.EMERGENCY_VEHICLE) {
+            GeoPoint evPosition = GeoPoint.latLon(rsa.position().lat() / 1e7
+                    , rsa.position().lon() / 1e7);
+            handleEmergencyVehicle(evPosition, rsa.position().heading() * 0.0125, null);
+        }
     }
 
     private void handleEmergencyVehicle(GeoPoint evPosition, Double evHeading, String evId) {
@@ -363,19 +357,18 @@ public class ObuControlCore {
             return;
         }
         EvPassingDetector.RelativePosition pos = detector.getRelativePosition(currentPoint, heading, evPosition);
-//        System.out.println("EV 目前在我 " + pos);
 
         double distance = currentPoint.distanceTo(evPosition);  // 自身與緊急車輛的距離
         double headingDiff = Math.abs(heading - evHeading);     // 自身車輛與緊急車輛的角度差異
 
         if (distance > 100 || headingDiff > 30) {               // 與事件無關
-            System.out.printf("vh%d: 與事件無關%n", vehicleId);
+//            System.out.printf("vh%d: 與事件無關%n", vehicleId);
             lastYieldAction = YieldAction.NONE;
             return;
         }
 
         if (detector.isBehind(currentPoint, heading, evPosition)) {  // 緊急車輛在自身車輛的後方
-            System.out.printf("vh%d: EV 在後方%n", vehicleId);
+//            System.out.printf("vh%d: EV 在後方%n", vehicleId);
 
             double myLateralPos = lateralLanePosition;
             double lateralDiff = Math.abs(detector.lateral);  // 公尺距離
@@ -385,16 +378,16 @@ public class ObuControlCore {
             if (totalLanesCount == 1) {
                 // 單線道：若擋到就停靠路邊
                 if (isBlocking) {
-                    System.out.printf("vh%d: 單線道，正在擋道 -> 臨停%n", vehicleId);
+//                    System.out.printf("vh%d: 單線道，正在擋道 -> 臨停%n", vehicleId);
                     lastYieldAction = YieldAction.STOP;
                 } else {
-                    System.out.printf("vh%d: 單線道但未擋道 -> 不動作", vehicleId);
+//                    System.out.printf("vh%d: 單線道但未擋道 -> 不動作", vehicleId);
                     lastYieldAction = YieldAction.NONE;
                 }
             } else {
                 // 多線道：若擋到則嘗試變換車道
                 if (isBlocking) {
-                    System.out.printf("vh%d: 多線道且擋道 -> 嘗試變換車道", vehicleId);
+//                    System.out.printf("vh%d: 多線道且擋道 -> 嘗試變換車道", vehicleId);
                     if (canChangeLaneLeft()) {
                         lastYieldAction = YieldAction.CHANGE_LANE_LEFT;
                     } else if (canChangeLaneRight()) {
@@ -403,7 +396,7 @@ public class ObuControlCore {
                         lastYieldAction = YieldAction.STOP;  // 無法變道，停下
                     }
                 } else {
-                    System.out.printf("vh%d: 多線道但未擋道 -> 不動作", vehicleId);
+//                    System.out.printf("vh%d: 多線道但未擋道 -> 不動作", vehicleId);
                     lastYieldAction = YieldAction.NONE;
                 }
             }

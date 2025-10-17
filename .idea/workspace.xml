@@ -3,12 +3,157 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="343d87bd-7c3d-49fe-a243-5a80c2287164" name="更改" comment="" />
+    <list default="true" id="343d87bd-7c3d-49fe-a243-5a80c2287164" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/TCROS-V2X-project.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/TcrosApplications/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/OSM/D_City_map.osm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/OSM/d_city_clean.net.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/TcrosApplications/TcrosApplications/GeneralApplications/src/main/java/CoreModule/ObuControlCore.java" beforeDir="false" afterPath="$PROJECT_DIR$/TcrosApplications/TcrosApplications/GeneralApplications/src/main/java/CoreModule/ObuControlCore.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TcrosApplications/TcrosApplications/GeneralApplications/src/main/java/TcrosObuApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/TcrosApplications/TcrosApplications/GeneralApplications/src/main/java/TcrosObuApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/ConnectionInfoServerApplication_server_0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/D_City_map.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/GeneralApplications-0.0.1.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/LLMApplication-0.0.1.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/RsuLlmApplication.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosObuApplication.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosProtocol-0.0.1.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_1.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_2.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_3.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_4.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_5.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_6.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_7.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/application/TcrosRsuApplication_rsu_8.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/cell/cell_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/cell/network.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/cell/regions.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/environment/environment_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/mapping/mapping_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/ns3/ns3_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/ns3/ns3_federate_config.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/omnetpp/omnetpp.ini" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/omnetpp/omnetpp_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/output/output_config.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/phabmacs/D_City_map.osm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/phabmacs/phabmacs_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/scenario_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/sns/sns_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/sumo/D_City_map.con.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/sumo/D_City_map.edg.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/sumo/D_City_map.net.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/sumo/D_City_map.nod.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/sumo/D_City_map.rou.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/D_City_map_Base/sumo/D_City_map.sumocfg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/ConnectionInfoServerApplication_server_0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/GeneralApplications-0.0.1.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosObuApplication.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosProtocol-0.0.1.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_1.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_10.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_11.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_12.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_13.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_14.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_15.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_16.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_17.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_2.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_3.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_4.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_5.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_6.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_7.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_8.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/TcrosRsuApplication_rsu_9.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/ntut.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/vh01.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/application/vh02.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/cell/cell_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/cell/network.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/cell/regions.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/environment/environment_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/mapping/mapping_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/ns3/ns3_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/ns3/ns3_federate_config.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/omnetpp/omnetpp.ini" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/omnetpp/omnetpp_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/output/output_config.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/phabmacs/ntut.osm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/phabmacs/phabmacs_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/scenario_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sns/sns_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sumo/ntut.con.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sumo/ntut.edg.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sumo/ntut.net.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sumo/ntut.nod.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sumo/ntut.rou.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sumo/ntut.rsu_pos.add.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S4/sumo/ntut.sumocfg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/ConnectionInfoServerApplication_server_0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/GeneralApplications-0.0.1.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosObuApplication.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosProtocol-0.0.1.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_1.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_10.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_11.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_12.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_13.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_14.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_15.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_16.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_17.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_2.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_3.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_4.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_5.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_6.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_7.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_8.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/TcrosRsuApplication_rsu_9.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/ntut.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/vh01.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/application/vh02.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/cell/cell_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/cell/network.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/cell/regions.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/environment/environment_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/mapping/mapping_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/ns3/ns3_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/ns3/ns3_federate_config.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/omnetpp/omnetpp.ini" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/omnetpp/omnetpp_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/output/output_config.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/phabmacs/ntut.osm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/phabmacs/phabmacs_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/scenario_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sns/sns_config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sumo/ntut.con.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sumo/ntut.edg.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sumo/ntut.net.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sumo/ntut.nod.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sumo/ntut.rou.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sumo/ntut.rsu_pos.add.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/secnario/ntut _S5/sumo/ntut.sumocfg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools.zip" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -22,9 +167,12 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/GengLee93/TCROS-V2X-project.git&quot;,
-    &quot;accountId&quot;: &quot;ac52984a-ef04-481d-86f5-43049836bd63&quot;
+    &quot;accountId&quot;: &quot;f0878faa-7b9e-4721-90df-6ee892f001ae&quot;
   }
 }</component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 6
 }</component>
@@ -33,36 +181,42 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/henry/Desktop/TCROS-V2X-project&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;项目&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/lizhe/Desktop/IoT-project/TCROS-V2X-project",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "项目",
+    "project.structure.proportion": "0.0",
+    "project.structure.side.proportion": "0.0",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.23892.409" />
-        <option value="bundled-js-predefined-d6986cc7102b-e03c56caf84a-JavaScript-IU-252.23892.409" />
+        <option value="bundled-jdk-9823dce3aa75-fbdcb00ec9e3-intellij.indexing.shared.core-IU-251.26094.121" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-IU-251.26094.121" />
       </set>
     </attachedChunks>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="默认任务">
       <changelist id="343d87bd-7c3d-49fe-a243-5a80c2287164" name="更改" comment="" />
@@ -76,6 +230,8 @@
       <workItem from="1754538481689" duration="38000" />
       <workItem from="1754538710366" duration="61000" />
       <workItem from="1754538831213" duration="110000" />
+      <workItem from="1760025479298" duration="20000" />
+      <workItem from="1760681246532" duration="3000" />
     </task>
     <servers />
   </component>

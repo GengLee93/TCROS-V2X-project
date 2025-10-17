@@ -16,20 +16,13 @@ import org.eclipse.mosaic.fed.application.app.api.VehicleApplication;
 import org.eclipse.mosaic.fed.application.app.api.os.VehicleOperatingSystem;
 import org.eclipse.mosaic.interactions.communication.V2xMessageTransmission;
 import org.eclipse.mosaic.interactions.vehicle.VehicleLaneChange;
-import org.eclipse.mosaic.interactions.vehicle.VehicleParametersChange;
-import org.eclipse.mosaic.interactions.vehicle.VehicleSightDistanceConfiguration;
 import org.eclipse.mosaic.lib.enums.AdHocChannel;
 import org.eclipse.mosaic.lib.enums.LaneChangeMode;
 import org.eclipse.mosaic.lib.enums.VehicleClass;
 import org.eclipse.mosaic.lib.enums.VehicleStopMode;
-import org.eclipse.mosaic.lib.enums.VehicleClass;
 import org.eclipse.mosaic.lib.geo.GeoCircle;
-import org.eclipse.mosaic.lib.geo.GeoPoint;
-import org.eclipse.mosaic.lib.geo.UtmPoint;
 import org.eclipse.mosaic.lib.objects.v2x.MessageRouting;
-import org.eclipse.mosaic.lib.objects.v2x.V2xMessage;
 import org.eclipse.mosaic.lib.objects.vehicle.VehicleData;
-import org.eclipse.mosaic.lib.objects.vehicle.VehicleParameter;
 import org.eclipse.mosaic.lib.util.scheduling.Event;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,11 +37,6 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
     private static final Log log = LogFactory.getLog(TcrosObuApplication.class);
     private ObuControlCore obuControlCore;
     private RealTimeReferencePoint timeReferencePoint;
-    //避讓
-    private Integer lastLaneIdx = null;      // 上一個 tick 的 laneIndex（做 diff 用）
-    private Integer lastChangeTarget = null; // 這次要求的目標 laneIndex
-    private Long    lastChangeWhen = null;   // 這次換道預計執行的模擬時間（ns）
-    private String  lastChangeConnId = null; // 下指令當下所屬的 connection，驗證時需一致
     public TcrosObuApplication(){
         super(ObuConfiguration.class,"TcrosObuApplication");
     }
@@ -165,21 +153,22 @@ public class TcrosObuApplication extends ConfigurableApplication<ObuConfiguratio
             }
             case CHANGE_LANE_LEFT -> {
                 getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_LEFT, 1_000_000_000L);
-                log.info(String.format("Vehicle ID %s: Left lane change successful", getOs().getId()));
+//                log.info(String.format("Vehicle ID %s: Left lane change successful", getOs().getId()));
             }
             case CHANGE_LANE_RIGHT -> {
                 getOs().changeLane(VehicleLaneChange.VehicleLaneChangeMode.TO_RIGHT, 5_000_000_000L);
-                log.info(String.format("Vehicle ID %s: Right lane change successful", getOs().getId()));
+//                log.info(String.format("Vehicle ID %s: Right lane change successful", getOs().getId()));
             }
             case STOP -> {
                 getOs().stopNow(VehicleStopMode.PARK_ON_ROADSIDE, 3_000_000_000L);
-                log.info(String.format("Vehicle ID %s: Acceleration failed, pulling over to stop", getOs().getId()));
+//                log.info(String.format("Vehicle ID %s: Acceleration failed, pulling over to stop", getOs().getId()));
             }
             case RESUME -> {
                 getOs().resume();
                 log.info(String.format("Vehicle ID %s: Resumed", getOs().getId()));
             }
-            case NONE -> log.info(String.format("Vehicle ID %s: No Yield Action", getOs().getId()));
+            case NONE -> { return; }
+//            case NONE -> log.info(String.format("Vehicle ID %s: No Yield Action", getOs().getId()));
         }
     }
 
