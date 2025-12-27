@@ -1,18 +1,34 @@
 # TCROS-V2X-project
 
-本研究以 TCROS（Traffic Control and Roadside Operating System）為核心架構，使用 Eclipse MOSAIC 為模擬平台，針對臺北科技大學周邊交通環境進行緊急車輛優先通行系統之模擬與驗證。隨著城市交通日益壅塞，緊急車輛（如救護車、消防車）在通行過程中常遭遇交通號誌延誤與車流阻礙，導致救援效率下降。為改善此問題，本專題導入車聯網（V2X）技術，模擬 OBU（車載單元）與 RSU（路側單元）間的通訊互動，並依據 MOTC 公布之 C-ITS 標準，模擬 EVA（緊急車輛告警）、RSA（路側告警）等封包格式以達成實驗。
+## Overview
+TCROS-V2X-project aims to simulate and validate emergency vehicle priority strategies in urban traffic environments using TCROS standards and Eclipse MOSAIC.
 
-研究內容涵蓋地圖建置、封包設計、訊息傳遞流程、號誌控制策略與通行效率分析。透過 TCROS 平台整合通訊模組與模擬邏輯，本專題不僅驗證緊急車輛優先通行策略的可行性，也建立一套具備動態判斷與號誌復位機制的智慧交通模擬框架，期望為未來城市交通管理與智慧救援系統提供技術參考與實證基礎。
+## Research Background
+This study is based on TCROS (Taiwan C-ITS Roadside Open Standards) as the core framework and employs Eclipse MOSAIC as the simulation platform to model and validate an emergency vehicle priority system in the traffic environment surrounding National Taipei University of Technology.
 
-## Build
+As urban traffic congestion intensifies, emergency vehicles (such as ambulances and fire trucks) often encounter delays caused by traffic signals and heavy traffic flow, which reduces rescue efficiency. To address this issue, this project introduces V2X (Vehicle-to-Everything) technology, simulating communication between OBUs (On-Board Units) and RSUs (Roadside Units). Following the C-ITS standards published by the MOTC, the project designs and verifies packet formats such as EVA (Emergency Vehicle Alert) and RSA (Roadside Alert).
 
-## IDE Setup
+Through the integration of communication modules and simulation logic on the TCROS platform, this study validates the feasibility of emergency vehicle priority strategies.
 
-## Code Origin & Permission
+## Simulation Content
+- Map construction
+- Packet design
+- Message transmission flow
+- Traffic signal control strategy
+- Efficiency analysis
 
-This project builds upon source code privately provided by FSJohnNtut (GitHub username), with explicit permission granted for reuse and extension in the TCROS-V2X research project.
-
-The original repository is not publicly accessible, but the base implementation was used as a foundation for further development, including enhancements to emergency vehicle communication logic, RSA broadcasting, and traffic light control mechanisms.
+## Project Structure 
+TCROS-V2X-project/
+├── OSM/                     # Map data (NTUT → NTU Hospital ER corridor)
+│
+├── TcrosApplications/       # Developed V2X applications
+│   ├── GeneralApplications/ # Applications implemented on Eclipse MOSAIC platform
+│   └── TcrosProtocol/       # Packet objects based on 2024 TCROS standards
+│
+├── Util/                    # Utility functions (packet conversion, simulation parameters)
+├── secnario/                # Packaged simulation scenarios (traffic flows, events, node configs)
+├── README.md                # Project documentation
+└── .idea/.DS_Store          # IDE and environment settings (can be ignored)
 
 ## License & Attribution
 
@@ -24,5 +40,5 @@ If you use Eclipse MOSAIC for research purposes, please cite the following publi
 
 > K. Schrab et al., “Modeling an ITS Management Solution for Mixed Highway Traffic with Eclipse MOSAIC.”  
 > *IEEE Transactions on Intelligent Transportation Systems*, Vol. 24, No. 6, pp. 6575–6585, June 2023.  
-> DOI: [10.1109/TITS.2022.3204174](https://doi.org/10.1109/TITS.2022.3204174)
+> DOI: [10.1109/TITS.2022.3204174](https://doi.org/10.1109/TITS.2022.3204174)**
 
