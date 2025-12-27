@@ -19,16 +19,22 @@ Through the integration of communication modules and simulation logic on the TCR
 
 ## Project Structure 
 TCROS-V2X-project/
-├── OSM/                     # Map data (NTUT → NTU Hospital ER corridor)
+├── OSM/                   # Map data (NTUT → NTU Hospital ER corridor)
 │
-├── TcrosApplications/       # Developed V2X applications
-│   ├── GeneralApplications/ # Applications implemented on Eclipse MOSAIC platform
-│   └── TcrosProtocol/       # Packet objects based on 2024 TCROS standards
+├── TcrosApplications/     # Developed V2X applications
 │
-├── Util/                    # Utility functions (packet conversion, simulation parameters)
-├── secnario/                # Packaged simulation scenarios (traffic flows, events, node configs)
-├── README.md                # Project documentation
-└── .idea/.DS_Store          # IDE and environment settings (can be ignored)
+├── GeneralApplications/   # Applications implemented on Eclipse MOSAIC platform
+│
+├── TcrosProtocol/         # Packet objects based on 2024 TCROS standards
+│
+├── Util/                  # Utility functions (packet conversion, simulation parameters)
+│
+├── secnario/              # Packaged simulation scenarios (traffic flows, events, node configs)
+│
+├── README.md              # Project documentation
+│
+└── .idea/.DS_Store        # IDE and environment settings (can be ignored)
+
 
 ## License & Attribution
 
